@@ -2,10 +2,13 @@ import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
+import { migrate } from 'drizzle-orm/postgres-js/migrator';
+import { db } from './db';
 import { auth } from './lib/auth';
 import { seasonsRouter } from './routes/seasons';
 import { runsRouter } from './routes/runs';
 import { videoRouter } from './routes/video';
+import { adminRouter } from './routes/admin';
 
 export const app = new Hono();
 
@@ -22,8 +25,10 @@ app.on(['GET', 'POST'], '/api/auth/**', (c) => auth.handler(c.req.raw));
 app.route('/api/seasons', seasonsRouter);
 app.route('/api/runs', runsRouter);
 app.route('/api/runs', videoRouter);
+app.route('/api/admin', adminRouter);
 
 if (process.env.NODE_ENV !== 'test') {
+  await migrate(db, { migrationsFolder: './drizzle' });
   serve({ fetch: app.fetch, port: Number(process.env.PORT ?? 3000) }, (info) => {
     console.log(`API running on http://localhost:${info.port}`);
   });
