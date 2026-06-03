@@ -1,11 +1,15 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
 
-export function AdminGuard() {
+interface Props {
+  children: React.ReactNode;
+}
+
+export function AdminGuard({ children }: Props) {
   const user = useAuthStore(s => s.user);
   const loading = useAuthStore(s => s.loading);
 
   if (loading) return null;
   if (user?.role !== 'admin') return <Navigate to="/" replace />;
-  return <Outlet />;
+  return <>{children}</>;
 }
