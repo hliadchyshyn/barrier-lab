@@ -4,7 +4,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import type { HurdleEvent } from '@barrier-lab/types';
 
-export const roleEnum = pgEnum('role', ['athlete', 'coach']);
+export const roleEnum = pgEnum('role', ['athlete', 'coach', 'admin']);
 export const membershipStatusEnum = pgEnum('membership_status', ['pending', 'active', 'revoked']);
 
 // id is text to match better-auth user.id type
