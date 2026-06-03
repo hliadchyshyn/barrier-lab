@@ -9,6 +9,7 @@ import { seasonsRouter } from './routes/seasons';
 import { runsRouter } from './routes/runs';
 import { videoRouter } from './routes/video';
 import { adminRouter } from './routes/admin';
+import { profileRouter } from './routes/profile';
 
 export const app = new Hono();
 
@@ -26,6 +27,7 @@ app.route('/api/seasons', seasonsRouter);
 app.route('/api/runs', runsRouter);
 app.route('/api/runs', videoRouter);
 app.route('/api/admin', adminRouter);
+app.route('/api/profile', profileRouter);
 
 if (process.env.NODE_ENV !== 'test') {
   await migrate(db, { migrationsFolder: './drizzle' });

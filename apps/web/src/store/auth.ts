@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import { authClient } from '../lib/authClient';
+import { api } from '../lib/apiClient';
 
-type User = { id: string; name: string; email: string; image?: string | null };
+type Role = 'athlete' | 'coach' | 'admin';
+type User = { id: string; name: string; email: string; image?: string | null; role: Role };
 
 interface AuthStore {
   user: User | null;
@@ -16,7 +18,17 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
   checkSession: async () => {
     const session = await authClient.getSession();
-    set({ user: (session?.data?.user as User) ?? null, loading: false });
+    if (!session?.data?.user) {
+      set({ user: null, loading: false });
+      return;
+    }
+    const baseUser = session.data.user as Omit<User, 'role'>;
+    try {
+      const profile = await api.get<{ role: Role }>('/api/profile');
+      set({ user: { ...baseUser, role: profile.role }, loading: false });
+    } catch {
+      set({ user: { ...baseUser, role: 'athlete' }, loading: false });
+    }
   },
 
   signOut: async () => {
