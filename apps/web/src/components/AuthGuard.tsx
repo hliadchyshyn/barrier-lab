@@ -2,13 +2,17 @@ import { useEffect } from 'react';
 import { useNavigate, Outlet } from 'react-router-dom';
 import { Center, Loader } from '@mantine/core';
 import { useAuthStore } from '../store/auth';
+import { migrateLocalRunsIfNeeded } from '../lib/localMigration';
 
 export function AuthGuard() {
   const { user, loading, checkSession } = useAuthStore();
   const navigate = useNavigate();
 
   useEffect(() => {
-    checkSession();
+    checkSession().then(() => {
+      const { user } = useAuthStore.getState();
+      if (user) migrateLocalRunsIfNeeded();
+    });
   }, [checkSession]);
 
   useEffect(() => {
