@@ -13,6 +13,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@barrier-lab/types": "workspace:*",
     "@emotion/react": "^11.14.0",
     "@emotion/server": "^11.11.0",
     "@mantine/charts": "^9.3.0",
