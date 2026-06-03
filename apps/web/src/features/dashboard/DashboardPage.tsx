@@ -7,7 +7,7 @@ import { DisciplineSelect } from '../../components/DisciplineSelect';
 import { DISCIPLINE_PRESETS } from '../../types';
 import type { Discipline, Run } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
-import { saveVideo } from '../../lib/videoStorage';
+import { saveVideo, uploadVideoToR2 } from '../../lib/videoStorage';
 
 export function DashboardPage() {
   const { runs, loaded, loadAll, addRun, deleteRun } = useRunsStore();
@@ -30,6 +30,10 @@ export function DashboardPage() {
     };
     await addRun(run);
     await saveVideo(id, videoFile);
+    // Upload to R2 in background — don't block navigation
+    uploadVideoToR2(id, videoFile).catch(err =>
+      console.error('R2 upload failed:', err),
+    );
     navigate(`/annotate/${id}`, { state: { videoFile } });
     setModalOpen(false);
     setName('');

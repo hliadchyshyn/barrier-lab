@@ -3,6 +3,7 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { Stack, Button, Group, Title, Divider, Alert, Text } from '@mantine/core';
 import { useRunsStore } from '../../store/runs';
 import { loadVideoUrl } from '../../lib/videoStorage';
+import { api } from '../../lib/apiClient';
 import { VideoPlayer } from './VideoPlayer';
 import { AnnotationControls } from './AnnotationControls';
 import { EventTimeline } from './EventTimeline';
@@ -29,15 +30,29 @@ export function AnnotatePage() {
       return () => URL.revokeObjectURL(url);
     }
 
-    // Fallback: load from OPFS (e.g. page refresh or re-annotate)
     if (!runId) return undefined;
     let mounted = true;
     let objectUrl: string | null = null;
-    loadVideoUrl(runId).then(url => {
-      if (!mounted || !url) return;
-      objectUrl = url;
-      setVideoSrc(url);
-    });
+
+    async function loadVideo() {
+      // 1. OPFS — fast, works offline
+      const opfsUrl = await loadVideoUrl(runId!);
+      if (opfsUrl && mounted) {
+        objectUrl = opfsUrl;
+        setVideoSrc(opfsUrl);
+        return;
+      }
+      // 2. R2 presigned URL — requires network
+      try {
+        const { url } = await api.get<{ url: string }>(`/api/runs/${runId}/video-url`);
+        if (mounted) setVideoSrc(url);
+      } catch {
+        // no video available — player stays empty
+      }
+    }
+
+    loadVideo();
+
     return () => {
       mounted = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);

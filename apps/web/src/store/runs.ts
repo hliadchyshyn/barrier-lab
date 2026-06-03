@@ -68,6 +68,7 @@ export const useRunsStore = create<RunsStore>((set) => ({
       api.delete(`/api/runs/${id}`),
       db.runs.delete(id),
       deleteVideo(id),
+      api.delete(`/api/runs/${id}/video`).catch(() => {}),
     ]);
     set(s => ({ runs: s.runs.filter(r => r.id !== id) }));
   },
