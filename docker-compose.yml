@@ -1,21 +1,63 @@
 services:
-  dev:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: barrier_lab
+      POSTGRES_USER: barrier
+      POSTGRES_PASSWORD: barrier
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U barrier -d barrier_lab"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
     build:
       context: .
-      target: dev
+      dockerfile: apps/api/Dockerfile.dev
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://barrier:barrier@db:5432/barrier_lab
+      CORS_ORIGIN: http://localhost:5173
+      PORT: "3000"
+      NODE_ENV: development
+    volumes:
+      - ./apps/api/src:/app/apps/api/src
+      - ./packages:/app/packages
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile.dev
     ports:
       - "5173:5173"
-    volumes:
-      - .:/app
-      - /app/node_modules
     environment:
-      - NODE_ENV=development
+      VITE_API_URL: http://localhost:3000
+    volumes:
+      - ./apps/web/src:/app/apps/web/src
+      - ./packages:/app/packages
 
-  prod:
+  # Production web (nginx) — run with: docker compose --profile prod up
+  web-prod:
     build:
       context: .
-      target: production
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
     ports:
       - "8080:80"
     profiles:
       - prod
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
