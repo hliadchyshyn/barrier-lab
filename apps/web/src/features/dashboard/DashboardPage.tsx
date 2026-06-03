@@ -7,6 +7,7 @@ import { DisciplineSelect } from '../../components/DisciplineSelect';
 import { DISCIPLINE_PRESETS } from '../../types';
 import type { Discipline, Run } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
+import { saveVideo } from '../../lib/videoStorage';
 
 export function DashboardPage() {
   const { runs, loaded, loadAll, addRun, deleteRun } = useRunsStore();
@@ -28,6 +29,7 @@ export function DashboardPage() {
       events: [], notes: '', createdAt: Date.now(),
     };
     await addRun(run);
+    await saveVideo(id, videoFile);
     navigate(`/annotate/${id}`, { state: { videoFile } });
     setModalOpen(false);
     setName('');

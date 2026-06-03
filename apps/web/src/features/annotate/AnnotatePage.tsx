@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { Stack, Button, Group, Title, Divider, Alert, Text } from '@mantine/core';
 import { useRunsStore } from '../../store/runs';
+import { loadVideoUrl } from '../../lib/videoStorage';
 import { VideoPlayer } from './VideoPlayer';
 import { AnnotationControls } from './AnnotationControls';
 import { EventTimeline } from './EventTimeline';
@@ -27,8 +28,21 @@ export function AnnotatePage() {
       setVideoSrc(url);
       return () => URL.revokeObjectURL(url);
     }
-    return undefined;
-  }, []);  // intentionally runs once — location.state is stable on mount
+
+    // Fallback: load from OPFS (e.g. page refresh or re-annotate)
+    if (!runId) return undefined;
+    let mounted = true;
+    let objectUrl: string | null = null;
+    loadVideoUrl(runId).then(url => {
+      if (!mounted || !url) return;
+      objectUrl = url;
+      setVideoSrc(url);
+    });
+    return () => {
+      mounted = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [runId]);  // intentionally omits location.state — stable on mount
 
   const handleMark = useCallback((evt: HurdleEvent) => setEvents(prev => [...prev, evt]), []);
   const handleUndo = useCallback(() => setEvents(prev => prev.slice(0, -1)), []);

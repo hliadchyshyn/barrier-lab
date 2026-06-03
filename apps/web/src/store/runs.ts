@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { db } from '../db';
+import { deleteVideo } from '../lib/videoStorage';
 import type { Run } from '../types';
 
 interface RunsStore {
@@ -36,7 +37,7 @@ export const useRunsStore = create<RunsStore>((set) => ({
   },
 
   deleteRun: async (id) => {
-    await db.runs.delete(id);
+    await Promise.all([db.runs.delete(id), deleteVideo(id)]);
     set(s => ({ runs: s.runs.filter(r => r.id !== id) }));
   },
 
