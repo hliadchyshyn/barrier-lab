@@ -9,18 +9,17 @@ interface Props {
   onTimeChange?: (t: number) => void;
   onDurationChange?: (d: number) => void;
   seekToTime?: number | null;
+  videoElRef?: React.RefObject<HTMLVideoElement | null>;
 }
 
-export function VideoPlayer({ src, onTimeChange, onDurationChange, seekToTime }: Props) {
+export function VideoPlayer({ src, onTimeChange, onDurationChange, seekToTime, videoElRef }: Props) {
   const { videoRef, currentTime, duration, playing, playbackRate,
-          togglePlay, seekTo, stepBack, stepForward, changeRate } = useVideoPlayer(src);
+          togglePlay, seekTo, stepBack, stepForward, changeRate } = useVideoPlayer(src, videoElRef);
 
-  // External seek via effect — avoids side effects during render
   useEffect(() => {
     if (seekToTime != null) seekTo(seekToTime);
   }, [seekToTime, seekTo]);
 
-  // Propagate duration to parent
   useEffect(() => {
     if (duration > 0) onDurationChange?.(duration);
   }, [duration, onDurationChange]);

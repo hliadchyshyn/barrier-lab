@@ -1,9 +1,13 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 
-const STEP = 1 / 30; // approximate single frame at 30fps
+const STEP = 1 / 30;
 
-export function useVideoPlayer(_videoSrc: string | null) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+export function useVideoPlayer(
+  _videoSrc: string | null,
+  externalRef?: React.RefObject<HTMLVideoElement | null>,
+) {
+  const internalRef = useRef<HTMLVideoElement>(null);
+  const videoRef = (externalRef ?? internalRef) as React.RefObject<HTMLVideoElement>;
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -26,19 +30,19 @@ export function useVideoPlayer(_videoSrc: string | null) {
       video.removeEventListener('play', onPlay);
       video.removeEventListener('pause', onPause);
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const togglePlay = useCallback(() => {
     const v = videoRef.current;
     if (!v) return;
     v.paused ? v.play() : v.pause();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const seekTo = useCallback((time: number) => {
     const v = videoRef.current;
     if (!v) return;
     v.currentTime = Math.max(0, Math.min(time, v.duration || 0));
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const stepBack    = useCallback(() => seekTo((videoRef.current?.currentTime ?? 0) - STEP), [seekTo]);
   const stepForward = useCallback(() => seekTo((videoRef.current?.currentTime ?? 0) + STEP), [seekTo]);
@@ -46,7 +50,7 @@ export function useVideoPlayer(_videoSrc: string | null) {
   const changeRate = useCallback((rate: number) => {
     if (videoRef.current) videoRef.current.playbackRate = rate;
     setPlaybackRate(rate);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

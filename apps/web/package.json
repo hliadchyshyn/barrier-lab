@@ -20,6 +20,7 @@
     "@mantine/core": "^9.3.0",
     "@mantine/hooks": "^9.3.0",
     "@mantine/notifications": "^9.3.0",
+    "@mediapipe/tasks-vision": "^0.10.35",
     "@tabler/icons-react": "^3.44.0",
     "better-auth": "^1.6.13",
     "dexie": "^4.4.3",
