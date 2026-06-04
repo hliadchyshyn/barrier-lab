@@ -12,6 +12,11 @@ export const auth = betterAuth({
       enabled: true,
       domain: '.railway.app',
     },
+    defaultCookieAttributes: {
+      sameSite: 'none',
+      secure: true,
+      httpOnly: true,
+    },
   },
   database: drizzleAdapter(db, {
     provider: 'pg',
