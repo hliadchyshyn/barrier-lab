@@ -107,7 +107,7 @@ export function Layout() {
                       <UserMenu />
                       <Button
                           component='a'
-                          href='https://buy.stripe.com/placeholder'
+                          href='https://send.monobank.ua/chaZmHXiy'
                           target='_blank'
                           rel='noopener noreferrer'
                           variant='light'
