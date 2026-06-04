@@ -72,104 +72,124 @@ export function Layout() {
   };
 
   return (
-    <AppShell header={{ height: 56 }} padding={{ base: 'sm', sm: 'md' }}>
-      <AppShell.Header>
-        <Group h="100%" px={{ base: 'sm', sm: 'md' }} justify="space-between">
-          <Text fw={700} size="lg" c="blue" style={{ cursor: 'pointer' }} onClick={() => navigate('/')}>
-            BarrierLab
-          </Text>
-
-          {/* Desktop nav */}
-          <Group gap="xs" visibleFrom="sm">
-            {navLinks.map(({ label, path, icon }) => (
-              <Button
-                key={path}
-                variant={pathname === path ? 'light' : 'subtle'}
-                size="sm"
-                leftSection={icon}
-                onClick={() => navigate(path)}
+      <AppShell header={{ height: 56 }} padding={{ base: 'sm', sm: 'md' }}>
+          <AppShell.Header>
+              <Group
+                  h='100%'
+                  px={{ base: 'sm', sm: 'md' }}
+                  justify='space-between'
               >
-                {label}
-              </Button>
-            ))}
-            <Divider orientation="vertical" />
-            <LangSwitch />
-            <UserMenu />
-            <Button
-              component="a"
-              href="https://buy.stripe.com/placeholder"
-              target="_blank"
-              rel="noopener noreferrer"
-              variant="light"
-              color="pink"
-              size="sm"
-              leftSection={<IconHeart size={16} />}
-            >
-              {t('nav.donate')}
-            </Button>
-          </Group>
+                  <Text
+                      fw={700}
+                      size='lg'
+                      c='blue'
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => navigate('/')}
+                  >
+                      BarrierLab
+                  </Text>
 
-          {/* Mobile: lang + avatar + burger */}
-          <Group gap="xs" hiddenFrom="sm">
-            <LangSwitch />
-            <UserMenu />
-            <Burger opened={drawerOpen} onClick={openDrawer} size="sm" />
-          </Group>
-        </Group>
-      </AppShell.Header>
+                  {/* Desktop nav */}
+                  <Group gap='xs' visibleFrom='sm'>
+                      {navLinks.map(({ label, path, icon }) => (
+                          <Button
+                              key={path}
+                              variant={pathname === path ? 'light' : 'subtle'}
+                              size='sm'
+                              leftSection={icon}
+                              onClick={() => navigate(path)}
+                          >
+                              {label}
+                          </Button>
+                      ))}
+                      <Divider orientation='vertical' />
+                      <LangSwitch />
+                      <UserMenu />
+                      <Button
+                          component='a'
+                          href='https://buy.stripe.com/placeholder'
+                          target='_blank'
+                          rel='noopener noreferrer'
+                          variant='light'
+                          color='pink'
+                          size='sm'
+                          leftSection={<IconHeart size={16} />}
+                      >
+                          {t('nav.donate')}
+                      </Button>
+                  </Group>
 
-      {/* Mobile drawer */}
-      <Drawer
-        opened={drawerOpen}
-        onClose={closeDrawer}
-        title="BarrierLab"
-        size="xs"
-        position="right"
-        hiddenFrom="sm"
-      >
-        <Stack gap="xs">
-          {navLinks.map(({ label, path, icon }) => (
-            <UnstyledButton
-              key={path}
-              onClick={() => handleNav(path)}
-              p="sm"
-              style={(theme) => ({
-                borderRadius: theme.radius.sm,
-                backgroundColor: pathname === path ? theme.colors.blue[0] : 'transparent',
-                color: pathname === path ? theme.colors.blue[7] : 'inherit',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                fontWeight: pathname === path ? 600 : 400,
-              })}
-            >
-              {icon}
-              {label}
-            </UnstyledButton>
-          ))}
-          <UnstyledButton
-            component="a"
-            href="https://buy.stripe.com/placeholder"
-            target="_blank"
-            rel="noopener noreferrer"
-            p="sm"
-            style={(theme) => ({
-              borderRadius: theme.radius.sm,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              color: theme.colors.pink[6],
-            })}
+                  {/* Mobile: lang + avatar + burger */}
+                  <Group gap='xs' hiddenFrom='sm'>
+                      <LangSwitch />
+                      <UserMenu />
+                      <Burger
+                          opened={drawerOpen}
+                          onClick={openDrawer}
+                          size='sm'
+                      />
+                  </Group>
+              </Group>
+          </AppShell.Header>
+
+          {/* Mobile drawer */}
+          <Drawer
+              opened={drawerOpen}
+              onClose={closeDrawer}
+              title='BarrierLab'
+              size='xs'
+              position='right'
+              hiddenFrom='sm'
           >
-            <IconHeart size={18} />
-            {t('nav.donate')}
-          </UnstyledButton>
-        </Stack>
-      </Drawer>
+              <Stack gap='xs'>
+                  {navLinks.map(({ label, path, icon }) => (
+                      <UnstyledButton
+                          key={path}
+                          onClick={() => handleNav(path)}
+                          p='sm'
+                          style={(theme) => ({
+                              borderRadius: theme.radius.sm,
+                              backgroundColor:
+                                  pathname === path
+                                      ? theme.colors.blue[0]
+                                      : 'transparent',
+                              color:
+                                  pathname === path
+                                      ? theme.colors.blue[7]
+                                      : 'inherit',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 10,
+                              fontWeight: pathname === path ? 600 : 400,
+                          })}
+                      >
+                          {icon}
+                          {label}
+                      </UnstyledButton>
+                  ))}
+                  <UnstyledButton
+                      component='a'
+                      href='https://send.monobank.ua/chaZmHXiy'
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      p='sm'
+                      style={(theme) => ({
+                          borderRadius: theme.radius.sm,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          color: theme.colors.pink[6],
+                      })}
+                  >
+                      <IconHeart size={18} />
+                      {t('nav.donate')}
+                  </UnstyledButton>
+              </Stack>
+          </Drawer>
 
-      <AppShell.Main>
-        <Outlet />
-      </AppShell.Main>
-    </AppShell>
+          <AppShell.Main>
+              <Outlet />
+          </AppShell.Main>
+      </AppShell>
   );
 }
