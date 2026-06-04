@@ -12,6 +12,7 @@ const DIST = join(__dirname, 'dist');
 console.log('__dirname:', __dirname);
 console.log('DIST:', DIST);
 console.log('DIST exists:', existsSync(DIST));
+console.log('index.html exists:', existsSync(join(DIST, 'index.html')));
 console.log('API_INTERNAL_URL:', API_URL ? API_URL : '(not set)');
 console.log('PORT:', PORT);
 
@@ -53,6 +54,7 @@ process.on('unhandledRejection', (reason) => {
 });
 
 const server = http.createServer((req, res) => {
+  console.log(`${req.method} ${req.url}`);
   try {
     if (req.url.startsWith('/api/')) {
       const options = {
