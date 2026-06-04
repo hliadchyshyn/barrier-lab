@@ -7,6 +7,7 @@ export function useSyncedVideos(offsetB: number = 0) {
   const offsetBRef = useRef(offsetB);
   const [currentTime, setCurrentTime] = useState(0);
   const [durationA, setDurationA] = useState(0);
+  const [durationB, setDurationB] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
 
@@ -101,7 +102,15 @@ export function useSyncedVideos(offsetB: number = 0) {
     setPlaybackRate(rate);
   }, []);
 
+  useEffect(() => {
+    const b = refB.current;
+    if (!b) return;
+    const onMeta = () => setDurationB(b.duration);
+    b.addEventListener('loadedmetadata', onMeta);
+    return () => b.removeEventListener('loadedmetadata', onMeta);
+  }, []);
+
   useEffect(() => () => stopLoop(), [stopLoop]);
 
-  return { refA, refB, currentTime, durationA, playing, playbackRate, seekTo, togglePlay, changeRate };
+  return { refA, refB, currentTime, durationA, durationB, playing, playbackRate, seekTo, togglePlay, changeRate };
 }

@@ -1,4 +1,4 @@
-import { Group, Stack, ActionIcon, Slider, Text, SegmentedControl, Title } from '@mantine/core';
+import { Group, Stack, ActionIcon, Slider, Text, SegmentedControl, Title, Alert } from '@mantine/core';
 import { IconPlayerPlay, IconPlayerPause } from '@tabler/icons-react';
 import { useSyncedVideos } from './useSyncedVideos';
 import { EventTimeline } from '../annotate/EventTimeline';
@@ -13,14 +13,25 @@ interface Props {
 }
 
 export function SyncedVideoPlayers({ runA, runB, srcA, srcB }: Props) {
-  const startA = runA.events.find(e => e.type === 'start')?.videoTime ?? 0;
-  const startB = runB.events.find(e => e.type === 'start')?.videoTime ?? 0;
-  const offsetB = startA - startB;
+  const startEventA = runA.events.find(e => e.type === 'start');
+  const startEventB = runB.events.find(e => e.type === 'start');
 
-  const { refA, refB, currentTime, durationA, playing, playbackRate, seekTo, togglePlay, changeRate } =
+  const offsetB = startEventA && startEventB
+    ? startEventA.videoTime - startEventB.videoTime
+    : 0;
+
+  const { refA, refB, currentTime, durationA, durationB, playing, playbackRate, seekTo, togglePlay, changeRate } =
     useSyncedVideos(offsetB);
 
   const pct = durationA ? (currentTime / durationA) * 100 : 0;
+
+  if (!startEventA || !startEventB) {
+    return (
+      <Alert color="orange">
+        Both runs must have a marked Start event to enable synchronized playback.
+      </Alert>
+    );
+  }
 
   return (
     <Stack gap="sm">
@@ -50,7 +61,7 @@ export function SyncedVideoPlayers({ runA, runB, srcA, srcB }: Props) {
           />
           <EventTimeline
             events={runB.events}
-            duration={durationA}
+            duration={durationB}
             currentTime={currentTime + offsetB}
             onSeek={t => seekTo(t - offsetB)}
             selectedEventIdx={null}
@@ -66,6 +77,7 @@ export function SyncedVideoPlayers({ runA, runB, srcA, srcB }: Props) {
         <Slider
           style={{ flex: 1 }}
           value={pct}
+          disabled={durationA === 0}
           onChange={v => seekTo((v / 100) * durationA)}
           label={null}
           size="sm"
