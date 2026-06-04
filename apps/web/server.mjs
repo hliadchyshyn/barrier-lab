@@ -1,7 +1,8 @@
-import express from 'express';
-import { createProxyMiddleware } from 'http-proxy-middleware';
+import http from 'http';
+import https from 'https';
+import { createReadStream, statSync, existsSync } from 'fs';
+import { join, dirname, extname } from 'path';
 import { fileURLToPath } from 'url';
-import { join, dirname } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -12,23 +13,53 @@ if (!API_URL) {
   process.exit(1);
 }
 
-const app = express();
+const apiUrl = new URL(API_URL);
+const isHttps = apiUrl.protocol === 'https:';
+const transport = isHttps ? https : http;
 
-app.use('/api', createProxyMiddleware({
-  target: API_URL,
-  changeOrigin: true,
-  on: {
-    error: (err, req, res) => {
+const MIME = {
+  '.html': 'text/html',
+  '.js':   'application/javascript',
+  '.css':  'text/css',
+  '.json': 'application/json',
+  '.png':  'image/png',
+  '.svg':  'image/svg+xml',
+  '.ico':  'image/x-icon',
+  '.woff2':'font/woff2',
+};
+
+const DIST = join(__dirname, 'dist');
+
+const server = http.createServer((req, res) => {
+  if (req.url.startsWith('/api/')) {
+    const options = {
+      hostname: apiUrl.hostname,
+      port: apiUrl.port || (isHttps ? 443 : 80),
+      path: req.url,
+      method: req.method,
+      headers: { ...req.headers, host: apiUrl.host },
+    };
+    const proxy = transport.request(options, (proxyRes) => {
+      res.writeHead(proxyRes.statusCode, proxyRes.headers);
+      proxyRes.pipe(res);
+    });
+    proxy.on('error', (err) => {
       console.error('Proxy error:', err.message);
-      res.status(502).json({ error: 'API unavailable' });
-    },
-  },
-}));
+      res.writeHead(502);
+      res.end('API unavailable');
+    });
+    req.pipe(proxy);
+    return;
+  }
 
-app.use(express.static(join(__dirname, 'dist')));
+  let filePath = join(DIST, req.url.split('?')[0]);
+  if (!existsSync(filePath) || statSync(filePath).isDirectory()) {
+    filePath = join(DIST, 'index.html');
+  }
 
-app.use((_, res) => {
-  res.sendFile(join(__dirname, 'dist', 'index.html'));
+  const mime = MIME[extname(filePath)] || 'application/octet-stream';
+  res.writeHead(200, { 'Content-Type': mime });
+  createReadStream(filePath).pipe(res);
 });
 
-app.listen(PORT, () => console.log(`Web server on port ${PORT}`));
+server.listen(PORT, () => console.log(`Web server on port ${PORT}`));
