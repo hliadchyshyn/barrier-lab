@@ -1,8 +1,12 @@
 import { useEffect, useRef } from 'react';
-import { Table, Text, Badge, Group } from '@mantine/core';
+import { Table, Text, Badge, Group, Paper } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
-import type { NormalizedLandmark, PoseAngles } from './usePose';
-import { ANGLE_CONFIG } from './angleConfig';
+import type { NormalizedLandmark, PoseAngles, HurdlePhase } from './usePose';
+import {
+  TORSO_CONFIG, KNEE_CONFIG, ELBOW_CONFIG,
+  evaluateAngle, rangeLabel,
+  type AnglePhaseConfig, type KneePhaseConfig, type PhaseRange, type BadgeStatus,
+} from './angleConfig';
 
 const SKELETON: [number, number][] = [
   [11, 12], [11, 13], [13, 15],
@@ -115,68 +119,148 @@ export function PoseCanvas({ allLandmarks, selectedPoseIdx, videoRef }: OverlayP
 
 interface TableProps {
   angles: PoseAngles | null;
+  phase: HurdlePhase | null;
 }
 
-function leanBadgeColor(angle: number): string {
-  if (angle >= 5 && angle <= 25) return 'green';
-  if (angle > 35) return 'red';
-  return 'yellow';
-}
+const BADGE_COLOR: Record<BadgeStatus, string> = {
+  ok:   'green',
+  low:  'yellow',
+  high: 'red',
+};
 
-function leanBadgeKey(angle: number): string {
-  if (angle < 5) return 'pose.badge.upright';
-  if (angle > 35) return 'pose.badge.overLean';
-  return 'pose.badge.ok';
-}
-
-export function PoseAnglesTable({ angles }: TableProps) {
+function StatusBadge({ status, value }: { status: BadgeStatus; value: number }) {
   const { t } = useTranslation();
-  if (!angles) return null;
+  const key = status === 'ok' ? 'pose.badge.ok' : status === 'low' ? 'pose.badge.low' : 'pose.badge.high';
+  return (
+    <Badge size="xs" color={BADGE_COLOR[status]}>
+      {value.toFixed(1)}° {t(key)}
+    </Badge>
+  );
+}
 
-  const rows: { key: string; value: number; badge?: React.ReactNode }[] = [
-    {
-      key: 'torsoLean',
-      value: angles.torsoLean,
-      badge: (
-        <Badge size="xs" color={leanBadgeColor(angles.torsoLean)}>
-          {t(leanBadgeKey(angles.torsoLean))}
-        </Badge>
-      ),
-    },
-    { key: 'rightKneeAngle',  value: angles.rightKneeAngle },
-    { key: 'leftKneeAngle',   value: angles.leftKneeAngle },
-    { key: 'rightElbowAngle', value: angles.rightElbowAngle },
-    { key: 'leftElbowAngle',  value: angles.leftElbowAngle },
-  ];
+interface AngleRow {
+  labelKey: string;
+  noteKey: string;
+  value: number;
+  range: PhaseRange;
+  sublabel?: string;
+}
+
+function buildRows(angles: PoseAngles, phase: HurdlePhase): AngleRow[] {
+  const rows: AngleRow[] = [];
+
+  rows.push({
+    labelKey: TORSO_CONFIG.labelKey,
+    noteKey: TORSO_CONFIG.noteKey,
+    value: angles.torsoLean,
+    range: TORSO_CONFIG.phases[phase],
+  });
+
+  const rightKnee = angles.rightKneeAngle;
+  const leftKnee  = angles.leftKneeAngle;
+
+  if (phase === 'clearance') {
+    const [trailAngle, leadAngle, trailKey, leadKey] =
+      rightKnee < leftKnee
+        ? [rightKnee, leftKnee, 'pose.trailLeg', 'pose.leadLeg']
+        : [leftKnee, rightKnee, 'pose.trailLeg', 'pose.leadLeg'];
+
+    rows.push({
+      labelKey: KNEE_CONFIG.labelKey,
+      noteKey: KNEE_CONFIG.noteKey,
+      value: trailAngle,
+      range: KNEE_CONFIG.clearanceTrail,
+      sublabel: trailKey,
+    });
+    rows.push({
+      labelKey: KNEE_CONFIG.labelKey,
+      noteKey: KNEE_CONFIG.noteKey,
+      value: leadAngle,
+      range: KNEE_CONFIG.clearanceLead,
+      sublabel: leadKey,
+    });
+  } else {
+    rows.push({
+      labelKey: 'pose.rightKnee',
+      noteKey: KNEE_CONFIG.noteKey,
+      value: rightKnee,
+      range: KNEE_CONFIG.phases[phase],
+    });
+    rows.push({
+      labelKey: 'pose.leftKnee',
+      noteKey: KNEE_CONFIG.noteKey,
+      value: leftKnee,
+      range: KNEE_CONFIG.phases[phase],
+    });
+  }
+
+  rows.push({
+    labelKey: 'pose.rightElbow',
+    noteKey: ELBOW_CONFIG.noteKey,
+    value: angles.rightElbowAngle,
+    range: ELBOW_CONFIG.phases[phase],
+  });
+  rows.push({
+    labelKey: 'pose.leftElbow',
+    noteKey: ELBOW_CONFIG.noteKey,
+    value: angles.leftElbowAngle,
+    range: ELBOW_CONFIG.phases[phase],
+  });
+
+  return rows;
+}
+
+const PHASE_COLOR: Record<HurdlePhase, string> = {
+  approach:  'blue',
+  clearance: 'orange',
+  descent:   'teal',
+  running:   'gray',
+};
+
+export function PoseAnglesTable({ angles, phase }: TableProps) {
+  const { t } = useTranslation();
+  if (!angles || !phase) return null;
+
+  const rows = buildRows(angles, phase);
 
   return (
-    <Table striped withTableBorder>
-      <Table.Thead>
-        <Table.Tr>
-          <Table.Th>{t('pose.joint')}</Table.Th>
-          <Table.Th>{t('pose.angle')}</Table.Th>
-          <Table.Th>{t('pose.typicalRange')}</Table.Th>
-          <Table.Th>{t('pose.note')}</Table.Th>
-        </Table.Tr>
-      </Table.Thead>
-      <Table.Tbody>
-        {rows.map(r => {
-          const cfg = ANGLE_CONFIG[r.key];
-          return (
-            <Table.Tr key={r.key}>
-              <Table.Td><Text size="sm">{t(cfg.labelKey)}</Text></Table.Td>
-              <Table.Td>
-                <Group gap="xs">
-                  <Text size="sm" fw={600}>{r.value.toFixed(1)}°</Text>
-                  {r.badge}
-                </Group>
-              </Table.Td>
-              <Table.Td><Text size="xs" c="dimmed">{cfg.typicalRange}</Text></Table.Td>
-              <Table.Td><Text size="xs" c="dimmed">{t(cfg.noteKey)}</Text></Table.Td>
-            </Table.Tr>
-          );
-        })}
-      </Table.Tbody>
-    </Table>
+    <Paper withBorder p="xs" radius="md">
+      <Group mb="xs" gap="xs" align="center">
+        <Text size="xs" c="dimmed">{t('pose.phase.label')}:</Text>
+        <Badge size="sm" color={PHASE_COLOR[phase]}>{t(`pose.phase.${phase}`)}</Badge>
+      </Group>
+      <Table striped withTableBorder>
+        <Table.Thead>
+          <Table.Tr>
+            <Table.Th><Text size="xs">{t('pose.joint')}</Text></Table.Th>
+            <Table.Th><Text size="xs">{t('pose.angle')}</Text></Table.Th>
+            <Table.Th><Text size="xs">{t('pose.typicalRange')}</Text></Table.Th>
+            <Table.Th><Text size="xs">{t('pose.note')}</Text></Table.Th>
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>
+          {rows.map((r, i) => {
+            const status = evaluateAngle(r.value, r.range);
+            return (
+              <Table.Tr key={i}>
+                <Table.Td>
+                  <Text size="sm">{t(r.labelKey)}</Text>
+                  {r.sublabel && <Text size="xs" c="dimmed">{t(r.sublabel)}</Text>}
+                </Table.Td>
+                <Table.Td>
+                  <StatusBadge status={status} value={r.value} />
+                </Table.Td>
+                <Table.Td>
+                  <Text size="xs" c="dimmed">{rangeLabel(r.range)}</Text>
+                </Table.Td>
+                <Table.Td>
+                  <Text size="xs" c="dimmed">{t(r.noteKey)}</Text>
+                </Table.Td>
+              </Table.Tr>
+            );
+          })}
+        </Table.Tbody>
+      </Table>
+    </Paper>
   );
 }
