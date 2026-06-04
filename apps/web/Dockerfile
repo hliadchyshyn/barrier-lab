@@ -21,4 +21,5 @@ COPY --from=build /app/apps/web/server.mjs ./apps/web/server.mjs
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/apps/web/node_modules ./apps/web/node_modules
 WORKDIR /app/apps/web
+EXPOSE 8080
 CMD ["node", "server.mjs"]
