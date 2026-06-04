@@ -27,7 +27,7 @@ app.use('/api', createProxyMiddleware({
 
 app.use(express.static(join(__dirname, 'dist')));
 
-app.get('*', (_, res) => {
+app.use((_, res) => {
   res.sendFile(join(__dirname, 'dist', 'index.html'));
 });
 
