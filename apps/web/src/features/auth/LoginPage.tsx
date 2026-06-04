@@ -23,7 +23,11 @@ export function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      await authClient.signIn.email({ email, password });
+      const result = await authClient.signIn.email({ email, password });
+      if (result.error) {
+        setError(result.error.message ?? 'Login failed');
+        return;
+      }
       await checkSession();
       navigate('/');
     } catch (err) {

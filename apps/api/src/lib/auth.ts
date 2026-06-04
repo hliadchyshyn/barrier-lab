@@ -3,18 +3,22 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { db } from '../db';
 import * as schema from '../db/schema';
 
+const isProd = process.env.NODE_ENV === 'production';
+
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET!,
   baseURL: process.env.BETTER_AUTH_URL!,
   trustedOrigins: (process.env.CORS_ORIGIN ?? '').split(',').filter(Boolean),
   advanced: {
-    crossSubdomainCookies: {
-      enabled: true,
-      domain: '.railway.app',
-    },
+    ...(isProd && {
+      crossSubdomainCookies: {
+        enabled: true,
+        domain: '.railway.app',
+      },
+    }),
     defaultCookieAttributes: {
-      sameSite: 'none',
-      secure: true,
+      sameSite: isProd ? 'none' : 'lax',
+      secure: isProd,
       httpOnly: true,
     },
   },

@@ -170,8 +170,6 @@ export function Layout() {
                   <UnstyledButton
                       component='a'
                       href='https://send.monobank.ua/chaZmHXiy'
-                      target='_blank'
-                      rel='noopener noreferrer'
                       p='sm'
                       style={(theme) => ({
                           borderRadius: theme.radius.sm,
