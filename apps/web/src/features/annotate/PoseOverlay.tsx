@@ -5,7 +5,7 @@ import type { NormalizedLandmark, PoseAngles, HurdlePhase } from './usePose';
 import {
   TORSO_CONFIG, KNEE_CONFIG, ELBOW_CONFIG,
   evaluateAngle, rangeLabel,
-  type AnglePhaseConfig, type KneePhaseConfig, type PhaseRange, type BadgeStatus,
+  type PhaseRange, type BadgeStatus,
 } from './angleConfig';
 
 const SKELETON: [number, number][] = [
