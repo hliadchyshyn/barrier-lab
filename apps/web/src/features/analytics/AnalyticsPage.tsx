@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { Stack, Title, Group, Button, Alert } from '@mantine/core';
+import { useTranslation } from 'react-i18next';
 import { useRunsStore } from '../../store/runs';
 import { computeStats } from '../../lib/compute';
 import { computeAnalytics } from '../../lib/analytics';
@@ -12,10 +13,11 @@ import { SegmentRatioChart } from './SegmentRatioChart';
 export function AnalyticsPage() {
   const { runId } = useParams<{ runId: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { runs } = useRunsStore();
   const run = runs.find(r => r.id === runId);
 
-  if (!run) return <div>Run not found</div>;
+  if (!run) return <div>{t('common.notFound')}</div>;
 
   const stats    = computeStats(run);
   const analysis = computeAnalytics(stats);
@@ -23,13 +25,15 @@ export function AnalyticsPage() {
 
   return (
     <Stack>
-      <Group justify="space-between">
-        <Title order={2}>Analytics — {run.name}</Title>
-        <Button variant="subtle" onClick={() => navigate(`/stats/${run.id}`)}>← Splits</Button>
+      <Group justify="space-between" wrap="nowrap" align="flex-start">
+        <Title order={2} style={{ minWidth: 0 }}>{t('analytics.title', { name: run.name })}</Title>
+        <Button variant="subtle" size="sm" onClick={() => navigate(`/stats/${run.id}`)} style={{ flexShrink: 0 }}>
+          {t('analytics.back')}
+        </Button>
       </Group>
 
       {!canAnalyze && (
-        <Alert color="orange">Not enough data. Annotate all hurdles to unlock analytics.</Alert>
+        <Alert color="orange">{t('analytics.notEnoughData')}</Alert>
       )}
 
       {canAnalyze && (

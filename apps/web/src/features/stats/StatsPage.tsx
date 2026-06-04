@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Stack, Title, Group, Button, Textarea } from '@mantine/core';
 import { useDebouncedCallback } from '@mantine/hooks';
+import { useTranslation } from 'react-i18next';
 import { useRunsStore } from '../../store/runs';
 import { computeStats } from '../../lib/compute';
 import { downloadCSV, runsToCSV } from '../../lib/csv';
@@ -13,6 +14,7 @@ export function StatsPage() {
   const { runId } = useParams<{ runId: string }>();
   const { runs, updateRun } = useRunsStore();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const run = runs.find(r => r.id === runId);
 
   const [notes, setNotes] = useState(run?.notes ?? '');
@@ -20,7 +22,7 @@ export function StatsPage() {
     if (run) updateRun(run.id, { notes: v });
   }, 800);
 
-  if (!run) return <div>Run not found</div>;
+  if (!run) return <div>{t('common.notFound')}</div>;
 
   const stats = computeStats(run);
 
@@ -36,16 +38,16 @@ export function StatsPage() {
 
   return (
     <Stack>
-      <Group justify="space-between">
+      <Stack gap="xs">
         <Title order={2}>{run.name}</Title>
-        <Group>
-          <Button variant="outline" onClick={() => navigate(`/annotate/${run.id}`)}>Re-annotate</Button>
-          <Button variant="outline" onClick={() => navigate(`/analytics/${run.id}`)}>Deep Analytics</Button>
-          <Button variant="outline" onClick={() => downloadCSV(runsToCSV([run]), `${run.name}-splits.csv`)}>
-            Export CSV
+        <Group gap="xs" wrap="wrap">
+          <Button variant="outline" size="sm" onClick={() => navigate(`/annotate/${run.id}`)}>{t('stats.reAnnotate')}</Button>
+          <Button variant="outline" size="sm" onClick={() => navigate(`/analytics/${run.id}`)}>{t('stats.deepAnalytics')}</Button>
+          <Button variant="outline" size="sm" onClick={() => downloadCSV(runsToCSV([run]), `${run.name}-splits.csv`)}>
+            {t('stats.exportCsv')}
           </Button>
         </Group>
-      </Group>
+      </Stack>
 
       <ConsistencyCard stats={stats} />
       <VelocityChart splits={stats.splits} />
@@ -56,8 +58,8 @@ export function StatsPage() {
       />
 
       <Textarea
-        label="Session notes"
-        placeholder="Weather, fatigue level, training context, coach feedback..."
+        label={t('stats.sessionNotes')}
+        placeholder={t('stats.sessionNotesPlaceholder')}
         value={notes}
         onChange={e => { setNotes(e.target.value); saveNotes(e.target.value); }}
         autosize
