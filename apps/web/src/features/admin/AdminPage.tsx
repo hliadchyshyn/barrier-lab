@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Stack, Title, SimpleGrid, Paper, Text, Table, ActionIcon,
-  Menu, Badge, Group, Alert, CopyButton, Button, Tooltip,
+  Menu, Badge, Group, Alert, CopyButton, Tooltip,
 } from '@mantine/core';
 import {
   IconTrash, IconKey, IconCopy, IconCheck, IconDotsVertical,
