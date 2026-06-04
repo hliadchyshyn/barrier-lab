@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Stack, Title, Select, Group, Text, Divider } from '@mantine/core';
 import { useRunsStore } from '../../store/runs';
 import { computeStats, computeDelta } from '../../lib/compute';
@@ -19,12 +19,18 @@ async function fetchVideoSrc(runId: string): Promise<string | null> {
   }
 }
 
+function revokeBlobUrl(url: string | null) {
+  if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
+}
+
 export function ComparePage() {
   const { runs } = useRunsStore();
   const [idA, setIdA] = useState<string | null>(null);
   const [idB, setIdB] = useState<string | null>(null);
   const [srcA, setSrcA] = useState<string | null>(null);
   const [srcB, setSrcB] = useState<string | null>(null);
+  const ownedA = useRef<string | null>(null);
+  const ownedB = useRef<string | null>(null);
 
   const runA = runs.find(r => r.id === idA);
   const runB = runs.find(r => r.id === idB);
@@ -35,34 +41,43 @@ export function ComparePage() {
   const deltas = statsA && statsB ? computeDelta(statsA, statsB) : [];
 
   useEffect(() => {
-    if (!idA) { setSrcA(null); return; }
+    if (!idA) {
+      revokeBlobUrl(ownedA.current);
+      ownedA.current = null;
+      setSrcA(null);
+      return;
+    }
     let cancelled = false;
-    let objUrl: string | null = null;
     fetchVideoSrc(idA).then(url => {
-      if (cancelled) return;
-      if (url?.startsWith('blob:')) objUrl = url;
+      if (cancelled) { revokeBlobUrl(url); return; }
+      revokeBlobUrl(ownedA.current);
+      ownedA.current = url?.startsWith('blob:') ? url : null;
       setSrcA(url);
     });
-    return () => {
-      cancelled = true;
-      if (objUrl) URL.revokeObjectURL(objUrl);
-    };
+    return () => { cancelled = true; };
   }, [idA]);
 
   useEffect(() => {
-    if (!idB) { setSrcB(null); return; }
+    if (!idB) {
+      revokeBlobUrl(ownedB.current);
+      ownedB.current = null;
+      setSrcB(null);
+      return;
+    }
     let cancelled = false;
-    let objUrl: string | null = null;
     fetchVideoSrc(idB).then(url => {
-      if (cancelled) return;
-      if (url?.startsWith('blob:')) objUrl = url;
+      if (cancelled) { revokeBlobUrl(url); return; }
+      revokeBlobUrl(ownedB.current);
+      ownedB.current = url?.startsWith('blob:') ? url : null;
       setSrcB(url);
     });
-    return () => {
-      cancelled = true;
-      if (objUrl) URL.revokeObjectURL(objUrl);
-    };
+    return () => { cancelled = true; };
   }, [idB]);
+
+  useEffect(() => () => {
+    revokeBlobUrl(ownedA.current);
+    revokeBlobUrl(ownedB.current);
+  }, []);
 
   return (
     <Stack>
