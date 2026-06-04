@@ -1,10 +1,34 @@
-import { AppShell, Group, Text, Avatar, Menu, Button, Divider, Burger, Drawer, Stack, UnstyledButton } from '@mantine/core';
+import { AppShell, Group, Text, Avatar, Menu, Button, Divider, Burger, Drawer, Stack, UnstyledButton, SegmentedControl } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { IconHome, IconArrowsLeftRight, IconTrendingUp, IconLogout, IconShield, IconHeart } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/auth';
+import i18n from '../i18n';
+
+const LANG_KEY = 'barrier-lab-lang';
+
+function LangSwitch() {
+  const { i18n: i18nHook } = useTranslation();
+  const current = i18nHook.language.startsWith('uk') ? 'uk' : 'en';
+  return (
+    <SegmentedControl
+      size="xs"
+      value={current}
+      onChange={(v) => {
+        i18n.changeLanguage(v);
+        localStorage.setItem(LANG_KEY, v);
+      }}
+      data={[
+        { value: 'en', label: 'EN' },
+        { value: 'uk', label: 'УК' },
+      ]}
+    />
+  );
+}
 
 function UserMenu() {
+  const { t } = useTranslation();
   const { user, signOut } = useAuthStore();
   const navigate = useNavigate();
   return (
@@ -20,7 +44,7 @@ function UserMenu() {
           leftSection={<IconLogout size={14} />}
           onClick={async () => { await signOut(); navigate('/login'); }}
         >
-          Sign out
+          {t('nav.signOut')}
         </Menu.Item>
       </Menu.Dropdown>
     </Menu>
@@ -28,6 +52,7 @@ function UserMenu() {
 }
 
 export function Layout() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [drawerOpen, { open: openDrawer, close: closeDrawer }] = useDisclosure(false);
@@ -35,10 +60,10 @@ export function Layout() {
   const isAdmin = user?.role === 'admin';
 
   const navLinks = [
-    { label: 'Runs',    path: '/',        icon: <IconHome size={18} /> },
-    { label: 'Trends',  path: '/trends',  icon: <IconTrendingUp size={18} /> },
-    { label: 'Compare', path: '/compare', icon: <IconArrowsLeftRight size={18} /> },
-    ...(isAdmin ? [{ label: 'Admin', path: '/admin', icon: <IconShield size={18} /> }] : []),
+    { label: t('nav.runs'),    path: '/',        icon: <IconHome size={18} /> },
+    { label: t('nav.trends'),  path: '/trends',  icon: <IconTrendingUp size={18} /> },
+    { label: t('nav.compare'), path: '/compare', icon: <IconArrowsLeftRight size={18} /> },
+    ...(isAdmin ? [{ label: t('nav.admin'), path: '/admin', icon: <IconShield size={18} /> }] : []),
   ];
 
   const handleNav = (path: string) => {
@@ -68,6 +93,7 @@ export function Layout() {
               </Button>
             ))}
             <Divider orientation="vertical" />
+            <LangSwitch />
             <UserMenu />
             <Button
               component="a"
@@ -79,12 +105,13 @@ export function Layout() {
               size="sm"
               leftSection={<IconHeart size={16} />}
             >
-              Donate
+              {t('nav.donate')}
             </Button>
           </Group>
 
-          {/* Mobile: avatar + burger */}
+          {/* Mobile: lang + avatar + burger */}
           <Group gap="xs" hiddenFrom="sm">
+            <LangSwitch />
             <UserMenu />
             <Burger opened={drawerOpen} onClick={openDrawer} size="sm" />
           </Group>
@@ -135,7 +162,7 @@ export function Layout() {
             })}
           >
             <IconHeart size={18} />
-            Donate
+            {t('nav.donate')}
           </UnstyledButton>
         </Stack>
       </Drawer>
