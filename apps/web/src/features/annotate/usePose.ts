@@ -34,13 +34,27 @@ function torsoLean(lm: NormalizedLandmark[]): number {
   return Math.atan2(Math.abs(dx), dy) * (180 / Math.PI);
 }
 
+function computeAngles(pts: NormalizedLandmark[]): PoseAngles {
+  return {
+    torsoLean: torsoLean(pts),
+    rightKneeAngle: angle3(pts[24], pts[26], pts[28]),
+    leftKneeAngle:  angle3(pts[23], pts[25], pts[27]),
+    rightElbowAngle: angle3(pts[12], pts[14], pts[16]),
+    leftElbowAngle:  angle3(pts[11], pts[13], pts[15]),
+  };
+}
+
 export function usePose() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const landmarkerRef = useRef<any>(null);
+  const allLandmarksRef = useRef<NormalizedLandmark[][] | null>(null);
   const [loading, setLoading] = useState(false);
-  const [landmarks, setLandmarks] = useState<NormalizedLandmark[] | null>(null);
+  const [allLandmarks, setAllLandmarks] = useState<NormalizedLandmark[][] | null>(null);
+  const [selectedPoseIdx, setSelectedPoseIdx] = useState(0);
   const [angles, setAngles] = useState<PoseAngles | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const landmarks = allLandmarks?.[selectedPoseIdx] ?? null;
 
   const ensureLoaded = useCallback(async () => {
     if (landmarkerRef.current) return landmarkerRef.current;
@@ -58,7 +72,7 @@ export function usePose() {
           delegate: 'CPU',
         },
         runningMode: 'IMAGE',
-        numPoses: 1,
+        numPoses: 8,
       });
       return landmarkerRef.current;
     } catch (e) {
@@ -74,32 +88,40 @@ export function usePose() {
     if (!lm) return;
     try {
       const result = lm.detect(video);
-      const pts: NormalizedLandmark[] = result.landmarks[0];
-      if (!pts || pts.length < 29) {
-        setLandmarks(null);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const allPts: NormalizedLandmark[][] = (result.landmarks as any[]).filter(
+        (pts: NormalizedLandmark[]) => pts && pts.length >= 29,
+      );
+      if (allPts.length === 0) {
+        allLandmarksRef.current = null;
+        setAllLandmarks(null);
         setAngles(null);
         setError('No pose detected in frame');
         return;
       }
+      allLandmarksRef.current = allPts;
       setError(null);
-      setLandmarks(pts);
-      setAngles({
-        torsoLean: torsoLean(pts),
-        rightKneeAngle: angle3(pts[24], pts[26], pts[28]),
-        leftKneeAngle:  angle3(pts[23], pts[25], pts[27]),
-        rightElbowAngle: angle3(pts[12], pts[14], pts[16]),
-        leftElbowAngle:  angle3(pts[11], pts[13], pts[15]),
-      });
+      setAllLandmarks(allPts);
+      setSelectedPoseIdx(0);
+      setAngles(computeAngles(allPts[0]));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Detection failed');
     }
   }, [ensureLoaded]);
 
+  const selectPose = useCallback((idx: number) => {
+    const pts = allLandmarksRef.current?.[idx];
+    setSelectedPoseIdx(idx);
+    setAngles(pts ? computeAngles(pts) : null);
+  }, []);
+
   const clearPose = useCallback(() => {
-    setLandmarks(null);
+    allLandmarksRef.current = null;
+    setAllLandmarks(null);
     setAngles(null);
+    setSelectedPoseIdx(0);
     setError(null);
   }, []);
 
-  return { detectOnFrame, clearPose, loading, landmarks, angles, error };
+  return { detectOnFrame, clearPose, selectPose, loading, allLandmarks, landmarks, selectedPoseIdx, angles, error };
 }

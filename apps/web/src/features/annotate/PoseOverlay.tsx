@@ -11,11 +11,65 @@ const SKELETON: [number, number][] = [
 ];
 
 interface OverlayProps {
-  landmarks: NormalizedLandmark[] | null;
+  allLandmarks: NormalizedLandmark[][] | null;
+  selectedPoseIdx: number;
   videoRef: React.RefObject<HTMLVideoElement | null>;
 }
 
-export function PoseCanvas({ landmarks, videoRef }: OverlayProps) {
+function drawPose(
+  ctx: CanvasRenderingContext2D,
+  lm: NormalizedLandmark[],
+  vw: number,
+  vh: number,
+  selected: boolean,
+  label: string,
+) {
+  const alpha = selected ? 1 : 0.35;
+  const boneColor  = selected ? `rgba(57,255,20,${alpha})`   : `rgba(180,180,180,${alpha})`;
+  const dotColor   = selected ? `rgba(255,68,68,${alpha})`   : `rgba(200,200,200,${alpha})`;
+  const labelBg    = selected ? 'rgba(57,255,20,0.9)'        : 'rgba(180,180,180,0.7)';
+  const labelFg    = selected ? '#000'                        : '#333';
+
+  const lw = Math.max(2, vw / 320);
+  ctx.strokeStyle = boneColor;
+  ctx.lineWidth = lw;
+  for (const [a, b] of SKELETON) {
+    if (!lm[a] || !lm[b]) continue;
+    ctx.beginPath();
+    ctx.moveTo(lm[a].x * vw, lm[a].y * vh);
+    ctx.lineTo(lm[b].x * vw, lm[b].y * vh);
+    ctx.stroke();
+  }
+
+  const r = Math.max(3, vw / 240);
+  ctx.fillStyle = dotColor;
+  for (const pt of lm) {
+    ctx.beginPath();
+    ctx.arc(pt.x * vw, pt.y * vh, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Label above nose (landmark 0)
+  const nose = lm[0];
+  if (nose) {
+    const tx = nose.x * vw;
+    const ty = nose.y * vh - r * 3;
+    const fontSize = Math.max(11, vw / 80);
+    ctx.font = `bold ${fontSize}px sans-serif`;
+    const metrics = ctx.measureText(label);
+    const pad = 3;
+    ctx.fillStyle = labelBg;
+    ctx.beginPath();
+    ctx.roundRect(tx - metrics.width / 2 - pad, ty - fontSize - pad, metrics.width + pad * 2, fontSize + pad * 2, 3);
+    ctx.fill();
+    ctx.fillStyle = labelFg;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(label, tx, ty);
+  }
+}
+
+export function PoseCanvas({ allLandmarks, selectedPoseIdx, videoRef }: OverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -32,27 +86,16 @@ export function PoseCanvas({ landmarks, videoRef }: OverlayProps) {
     if (!ctx) return;
     ctx.clearRect(0, 0, vw, vh);
 
-    if (!landmarks) return;
+    if (!allLandmarks) return;
 
-    const lw = Math.max(2, vw / 320);
-    ctx.strokeStyle = '#39ff14';
-    ctx.lineWidth = lw;
-    for (const [a, b] of SKELETON) {
-      if (!landmarks[a] || !landmarks[b]) continue;
-      ctx.beginPath();
-      ctx.moveTo(landmarks[a].x * vw, landmarks[a].y * vh);
-      ctx.lineTo(landmarks[b].x * vw, landmarks[b].y * vh);
-      ctx.stroke();
+    // Draw unselected first, then selected on top
+    allLandmarks.forEach((lm, i) => {
+      if (i !== selectedPoseIdx) drawPose(ctx, lm, vw, vh, false, `${i + 1}`);
+    });
+    if (allLandmarks[selectedPoseIdx]) {
+      drawPose(ctx, allLandmarks[selectedPoseIdx], vw, vh, true, `${selectedPoseIdx + 1}`);
     }
-
-    const r = Math.max(3, vw / 240);
-    ctx.fillStyle = '#ff4444';
-    for (const lm of landmarks) {
-      ctx.beginPath();
-      ctx.arc(lm.x * vw, lm.y * vh, r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }, [landmarks, videoRef]);
+  }, [allLandmarks, selectedPoseIdx, videoRef]);
 
   return (
     <canvas
@@ -100,8 +143,8 @@ export function PoseAnglesTable({ angles }: TableProps) {
         </Badge>
       ),
     },
-    { label: 'Right knee', value: angles.rightKneeAngle, hint: 'hip–knee–ankle' },
-    { label: 'Left knee',  value: angles.leftKneeAngle,  hint: 'hip–knee–ankle' },
+    { label: 'Right knee',  value: angles.rightKneeAngle,  hint: 'hip–knee–ankle' },
+    { label: 'Left knee',   value: angles.leftKneeAngle,   hint: 'hip–knee–ankle' },
     { label: 'Right elbow', value: angles.rightElbowAngle, hint: 'shoulder–elbow–wrist' },
     { label: 'Left elbow',  value: angles.leftElbowAngle,  hint: 'shoulder–elbow–wrist' },
   ];

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import {
   Stack, Button, Group, Title, Divider, Alert, Text,
-  Collapse, ActionIcon, Loader,
+  Collapse, ActionIcon, Loader, SegmentedControl,
 } from '@mantine/core';
 import { IconChevronDown, IconChevronUp, IconRun } from '@tabler/icons-react';
 import { useRunsStore } from '../../store/runs';
@@ -31,7 +31,10 @@ export function AnnotatePage() {
   const [poseOpen, setPoseOpen]           = useState(false);
 
   const videoElRef = useRef<HTMLVideoElement>(null);
-  const { detectOnFrame, clearPose, loading: poseLoading, landmarks, angles, error: poseError } = usePose();
+  const {
+    detectOnFrame, clearPose, selectPose,
+    loading: poseLoading, allLandmarks, selectedPoseIdx, angles, error: poseError,
+  } = usePose();
 
   useEffect(() => {
     const file: File | undefined = location.state?.videoFile;
@@ -132,7 +135,9 @@ export function AnnotatePage() {
           seekToTime={seekTarget}
           videoElRef={videoElRef}
         />
-        {poseOpen && <PoseCanvas landmarks={landmarks} videoRef={videoElRef} />}
+        {poseOpen && (
+          <PoseCanvas allLandmarks={allLandmarks} selectedPoseIdx={selectedPoseIdx} videoRef={videoElRef} />
+        )}
       </div>
 
       <EventTimeline
@@ -181,6 +186,17 @@ export function AnnotatePage() {
             </Button>
             {poseError && <Text size="xs" c="red">{poseError}</Text>}
           </Group>
+          {allLandmarks && allLandmarks.length > 1 && (
+            <Group gap="xs" align="center">
+              <Text size="xs" c="dimmed">Athlete:</Text>
+              <SegmentedControl
+                size="xs"
+                value={String(selectedPoseIdx)}
+                onChange={v => selectPose(Number(v))}
+                data={allLandmarks.map((_, i) => ({ label: `${i + 1}`, value: String(i) }))}
+              />
+            </Group>
+          )}
           <PoseAnglesTable angles={angles} />
         </Stack>
       </Collapse>
