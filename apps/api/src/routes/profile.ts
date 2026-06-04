@@ -3,8 +3,9 @@ import { eq } from 'drizzle-orm';
 import { db } from '../db';
 import { profiles } from '../db/schema';
 import { requireAuth } from '../middleware/requireAuth';
+import type { AppVariables } from '../types';
 
-export const profileRouter = new Hono();
+export const profileRouter = new Hono<{ Variables: AppVariables }>();
 
 profileRouter.use('*', requireAuth);
 

@@ -4,8 +4,9 @@ import { db } from '../db';
 import { profiles, runs, user, verification } from '../db/schema';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireAdmin } from '../middleware/requireAdmin';
+import type { AppVariables } from '../types';
 
-export const adminRouter = new Hono();
+export const adminRouter = new Hono<{ Variables: AppVariables }>();
 
 adminRouter.use('*', requireAuth, requireAdmin);
 

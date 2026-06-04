@@ -6,6 +6,7 @@ import { db } from '../db';
 import { runs } from '../db/schema';
 import { requireAuth } from '../middleware/requireAuth';
 import type { HurdleEvent } from '@barrier-lab/types';
+import type { AppVariables } from '../types';
 
 const hurdleEventSchema = z.object({
   type:        z.enum(['start', 'hurdle', 'finish']),
@@ -32,7 +33,7 @@ const updateSchema = z.object({
   name:     z.string().min(1).optional(),
 });
 
-export const runsRouter = new Hono();
+export const runsRouter = new Hono<{ Variables: AppVariables }>();
 
 runsRouter.use('*', requireAuth);
 

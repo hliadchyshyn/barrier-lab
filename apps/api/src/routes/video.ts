@@ -6,8 +6,9 @@ import { db } from '../db';
 import { runs } from '../db/schema';
 import { requireAuth } from '../middleware/requireAuth';
 import { getUploadUrl, getDownloadUrl, deleteObject } from '../lib/r2';
+import type { AppVariables } from '../types';
 
-export const videoRouter = new Hono();
+export const videoRouter = new Hono<{ Variables: AppVariables }>();
 
 videoRouter.use('*', requireAuth);
 

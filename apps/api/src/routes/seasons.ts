@@ -5,6 +5,7 @@ import { eq, and } from 'drizzle-orm';
 import { db } from '../db';
 import { seasons } from '../db/schema';
 import { requireAuth } from '../middleware/requireAuth';
+import type { AppVariables } from '../types';
 
 const createSchema = z.object({
   name:       z.string().min(1),
@@ -15,7 +16,7 @@ const createSchema = z.object({
 
 const updateSchema = createSchema.partial();
 
-export const seasonsRouter = new Hono();
+export const seasonsRouter = new Hono<{ Variables: AppVariables }>();
 
 seasonsRouter.use('*', requireAuth);
 
