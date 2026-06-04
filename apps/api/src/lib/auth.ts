@@ -7,6 +7,12 @@ export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET!,
   baseURL: process.env.BETTER_AUTH_URL!,
   trustedOrigins: (process.env.CORS_ORIGIN ?? '').split(',').filter(Boolean),
+  advanced: {
+    crossSubdomainCookies: {
+      enabled: true,
+      domain: '.railway.app',
+    },
+  },
   database: drizzleAdapter(db, {
     provider: 'pg',
     schema: {
