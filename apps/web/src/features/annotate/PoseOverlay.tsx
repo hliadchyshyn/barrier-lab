@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { Table, Text, Badge, Group } from '@mantine/core';
+import { useTranslation } from 'react-i18next';
 import type { NormalizedLandmark, PoseAngles } from './usePose';
+import { ANGLE_CONFIG } from './angleConfig';
 
 const SKELETON: [number, number][] = [
   [11, 12], [11, 13], [13, 15],
@@ -49,7 +51,6 @@ function drawPose(
     ctx.fill();
   }
 
-  // Label above nose (landmark 0)
   const nose = lm[0];
   if (nose) {
     const tx = nose.x * vw;
@@ -88,7 +89,6 @@ export function PoseCanvas({ allLandmarks, selectedPoseIdx, videoRef }: OverlayP
 
     if (!allLandmarks) return;
 
-    // Draw unselected first, then selected on top
     allLandmarks.forEach((lm, i) => {
       if (i !== selectedPoseIdx) drawPose(ctx, lm, vw, vh, false, `${i + 1}`);
     });
@@ -123,54 +123,59 @@ function leanBadgeColor(angle: number): string {
   return 'yellow';
 }
 
-function leanBadgeLabel(angle: number): string {
-  if (angle < 5) return 'upright';
-  if (angle > 35) return 'over-lean';
-  return 'ok';
+function leanBadgeKey(angle: number): string {
+  if (angle < 5) return 'pose.badge.upright';
+  if (angle > 35) return 'pose.badge.overLean';
+  return 'pose.badge.ok';
 }
 
 export function PoseAnglesTable({ angles }: TableProps) {
+  const { t } = useTranslation();
   if (!angles) return null;
 
-  const rows: { label: string; value: number; hint: string; badge?: React.ReactNode }[] = [
+  const rows: { key: string; value: number; badge?: React.ReactNode }[] = [
     {
-      label: 'Torso lean',
+      key: 'torsoLean',
       value: angles.torsoLean,
-      hint: 'forward lean from vertical',
       badge: (
         <Badge size="xs" color={leanBadgeColor(angles.torsoLean)}>
-          {leanBadgeLabel(angles.torsoLean)}
+          {t(leanBadgeKey(angles.torsoLean))}
         </Badge>
       ),
     },
-    { label: 'Right knee',  value: angles.rightKneeAngle,  hint: 'hip–knee–ankle' },
-    { label: 'Left knee',   value: angles.leftKneeAngle,   hint: 'hip–knee–ankle' },
-    { label: 'Right elbow', value: angles.rightElbowAngle, hint: 'shoulder–elbow–wrist' },
-    { label: 'Left elbow',  value: angles.leftElbowAngle,  hint: 'shoulder–elbow–wrist' },
+    { key: 'rightKneeAngle',  value: angles.rightKneeAngle },
+    { key: 'leftKneeAngle',   value: angles.leftKneeAngle },
+    { key: 'rightElbowAngle', value: angles.rightElbowAngle },
+    { key: 'leftElbowAngle',  value: angles.leftElbowAngle },
   ];
 
   return (
     <Table striped withTableBorder>
       <Table.Thead>
         <Table.Tr>
-          <Table.Th>Joint</Table.Th>
-          <Table.Th>Angle</Table.Th>
-          <Table.Th>Note</Table.Th>
+          <Table.Th>{t('pose.joint')}</Table.Th>
+          <Table.Th>{t('pose.angle')}</Table.Th>
+          <Table.Th>{t('pose.typicalRange')}</Table.Th>
+          <Table.Th>{t('pose.note')}</Table.Th>
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
-        {rows.map(r => (
-          <Table.Tr key={r.label}>
-            <Table.Td><Text size="sm">{r.label}</Text></Table.Td>
-            <Table.Td>
-              <Group gap="xs">
-                <Text size="sm" fw={600}>{r.value.toFixed(1)}°</Text>
-                {r.badge}
-              </Group>
-            </Table.Td>
-            <Table.Td><Text size="xs" c="dimmed">{r.hint}</Text></Table.Td>
-          </Table.Tr>
-        ))}
+        {rows.map(r => {
+          const cfg = ANGLE_CONFIG[r.key];
+          return (
+            <Table.Tr key={r.key}>
+              <Table.Td><Text size="sm">{t(cfg.labelKey)}</Text></Table.Td>
+              <Table.Td>
+                <Group gap="xs">
+                  <Text size="sm" fw={600}>{r.value.toFixed(1)}°</Text>
+                  {r.badge}
+                </Group>
+              </Table.Td>
+              <Table.Td><Text size="xs" c="dimmed">{cfg.typicalRange}</Text></Table.Td>
+              <Table.Td><Text size="xs" c="dimmed">{t(cfg.noteKey)}</Text></Table.Td>
+            </Table.Tr>
+          );
+        })}
       </Table.Tbody>
     </Table>
   );
