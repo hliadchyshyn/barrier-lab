@@ -98,14 +98,14 @@ export function AnnotatePage() {
     detectOnFrame(video);
   }, [detectOnFrame]);
 
-  const handleTogglePose = () => {
+  const handleTogglePose = useCallback(() => {
     if (poseOpen) {
       clearPose();
       setPoseOpen(false);
     } else {
       setPoseOpen(true);
     }
-  };
+  }, [poseOpen, clearPose]);
 
   if (!run) return <div>Run not found</div>;
 
