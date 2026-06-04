@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Stack, Title, Select, Group, Text, Divider } from '@mantine/core';
+import { useTranslation } from 'react-i18next';
 import { useRunsStore } from '../../store/runs';
 import { computeStats, computeDelta } from '../../lib/compute';
 import { loadVideoUrl } from '../../lib/videoStorage';
@@ -24,6 +25,7 @@ function revokeBlobUrl(url: string | null) {
 }
 
 export function ComparePage() {
+  const { t } = useTranslation();
   const { runs } = useRunsStore();
   const [idA, setIdA] = useState<string | null>(null);
   const [idB, setIdB] = useState<string | null>(null);
@@ -81,11 +83,11 @@ export function ComparePage() {
 
   return (
     <Stack>
-      <Title order={2}>Compare Runs</Title>
+      <Title order={2}>{t('compare.title')}</Title>
       <Group align="flex-end" grow wrap="wrap">
-        <Select label="Run A" placeholder="Select run" data={options}
+        <Select label={t('compare.runA')} placeholder={t('compare.selectRun')} data={options}
           value={idA} onChange={setIdA} style={{ minWidth: 140 }} />
-        <Select label="Run B" placeholder="Select run" data={options}
+        <Select label={t('compare.runB')} placeholder={t('compare.selectRun')} data={options}
           value={idB} onChange={setIdB} style={{ minWidth: 140 }} />
       </Group>
 
@@ -95,16 +97,16 @@ export function ComparePage() {
           <Divider />
           {deltas.length > 0 ? (
             <>
-              <Text size="sm" c="dimmed">Green delta = Run B is faster. Red = Run B is slower.</Text>
+              <Text size="sm" c="dimmed">{t('compare.deltaHint')}</Text>
               <OverlayChart deltas={deltas} nameA={runA.name} nameB={runB.name} />
               <DeltaTable deltas={deltas} />
             </>
           ) : (
-            <Text c="dimmed" size="sm">Annotate both runs to see split comparison.</Text>
+            <Text c="dimmed" size="sm">{t('compare.annotatePrompt')}</Text>
           )}
         </>
       ) : (
-        <Text c="dimmed">Select two runs to compare their splits.</Text>
+        <Text c="dimmed">{t('compare.selectPrompt')}</Text>
       )}
     </Stack>
   );
