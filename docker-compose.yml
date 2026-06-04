@@ -28,6 +28,7 @@ services:
       NODE_ENV: development
     volumes:
       - ./apps/api/src:/app/apps/api/src
+      - ./apps/api/drizzle:/app/apps/api/drizzle
       - ./packages:/app/packages
     depends_on:
       db:

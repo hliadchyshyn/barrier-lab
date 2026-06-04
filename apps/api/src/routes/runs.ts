@@ -61,6 +61,7 @@ runsRouter.post('/', zValidator('json', createSchema), async (c) => {
     ...body,
     userId,
     events: body.events as HurdleEvent[],
+    createdAt: new Date(body.createdAt),
   }).returning();
   return c.json(row, 201);
 });
