@@ -21,7 +21,20 @@ app.use('*', cors({
 
 app.get('/health', (c) => c.json({ ok: true }));
 
-app.on(['GET', 'POST'], '/api/auth/**', (c) => auth.handler(c.req.raw));
+app.on(['GET', 'POST'], '/api/auth/**', async (c) => {
+  const response = await auth.handler(c.req.raw);
+  const requestOrigin = c.req.header('origin') ?? '';
+  const allowedOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:5173')
+    .split(',')
+    .map(o => o.trim());
+  if (allowedOrigins.includes(requestOrigin)) {
+    const headers = new Headers(response.headers);
+    headers.set('Access-Control-Allow-Origin', requestOrigin);
+    headers.set('Access-Control-Allow-Credentials', 'true');
+    return new Response(response.body, { status: response.status, headers });
+  }
+  return response;
+});
 
 app.route('/api/seasons', seasonsRouter);
 app.route('/api/runs', runsRouter);
