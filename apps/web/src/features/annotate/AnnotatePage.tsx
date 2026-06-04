@@ -1,12 +1,18 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { Stack, Button, Group, Title, Divider, Alert, Text } from '@mantine/core';
+import {
+  Stack, Button, Group, Title, Divider, Alert, Text,
+  Collapse, ActionIcon, Loader,
+} from '@mantine/core';
+import { IconChevronDown, IconChevronUp, IconRun } from '@tabler/icons-react';
 import { useRunsStore } from '../../store/runs';
 import { loadVideoUrl } from '../../lib/videoStorage';
 import { api } from '../../lib/apiClient';
 import { VideoPlayer } from './VideoPlayer';
 import { AnnotationControls } from './AnnotationControls';
 import { EventTimeline } from './EventTimeline';
+import { PoseCanvas, PoseAnglesTable } from './PoseOverlay';
+import { usePose } from './usePose';
 import type { HurdleEvent } from '../../types';
 
 export function AnnotatePage() {
@@ -16,11 +22,16 @@ export function AnnotatePage() {
   const { runs, updateRun } = useRunsStore();
   const run = runs.find(r => r.id === runId);
 
-  const [events, setEvents]           = useState<HurdleEvent[]>(run?.events ?? []);
-  const [videoSrc, setVideoSrc]       = useState<string | null>(null);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration]       = useState(0);
-  const [seekTarget, setSeekTarget]   = useState<number | null>(null);
+  const [events, setEvents]               = useState<HurdleEvent[]>(run?.events ?? []);
+  const [videoSrc, setVideoSrc]           = useState<string | null>(null);
+  const [currentTime, setCurrentTime]     = useState(0);
+  const [duration, setDuration]           = useState(0);
+  const [seekTarget, setSeekTarget]       = useState<number | null>(null);
+  const [selectedEventIdx, setSelectedEventIdx] = useState<number | null>(null);
+  const [poseOpen, setPoseOpen]           = useState(false);
+
+  const videoElRef = useRef<HTMLVideoElement>(null);
+  const { detectOnFrame, clearPose, loading: poseLoading, landmarks, angles, error: poseError } = usePose();
 
   useEffect(() => {
     const file: File | undefined = location.state?.videoFile;
@@ -35,19 +46,17 @@ export function AnnotatePage() {
     let objectUrl: string | null = null;
 
     async function loadVideo() {
-      // 1. OPFS — fast, works offline
       const opfsUrl = await loadVideoUrl(runId!);
       if (opfsUrl && mounted) {
         objectUrl = opfsUrl;
         setVideoSrc(opfsUrl);
         return;
       }
-      // 2. R2 presigned URL — requires network
       try {
         const { url } = await api.get<{ url: string }>(`/api/runs/${runId}/video-url`);
         if (mounted) setVideoSrc(url);
       } catch {
-        // no video available — player stays empty
+        // no video available
       }
     }
 
@@ -57,10 +66,25 @@ export function AnnotatePage() {
       mounted = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [runId]);  // intentionally omits location.state — stable on mount
+  }, [runId]);
 
-  const handleMark = useCallback((evt: HurdleEvent) => setEvents(prev => [...prev, evt]), []);
-  const handleUndo = useCallback(() => setEvents(prev => prev.slice(0, -1)), []);
+  const handleMark = useCallback((evt: HurdleEvent) => {
+    setEvents(prev => [...prev, evt]);
+    setSelectedEventIdx(null);
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    if (selectedEventIdx !== null) {
+      setEvents(prev => prev.filter((_, i) => i !== selectedEventIdx));
+      setSelectedEventIdx(null);
+    } else {
+      setEvents(prev => prev.slice(0, -1));
+    }
+  }, [selectedEventIdx]);
+
+  const handleSelectEvent = useCallback((idx: number) => {
+    setSelectedEventIdx(prev => prev === idx ? null : idx);
+  }, []);
 
   const handleSave = async () => {
     if (!run) return;
@@ -68,13 +92,30 @@ export function AnnotatePage() {
     navigate(`/stats/${run.id}`);
   };
 
+  const handleAnalyzePose = useCallback(() => {
+    const video = videoElRef.current;
+    if (!video) return;
+    detectOnFrame(video);
+  }, [detectOnFrame]);
+
+  const handleTogglePose = () => {
+    if (poseOpen) {
+      clearPose();
+      setPoseOpen(false);
+    } else {
+      setPoseOpen(true);
+    }
+  };
+
   if (!run) return <div>Run not found</div>;
 
   return (
     <Stack>
-      <Group justify="space-between">
-        <Title order={3}>{run.name}</Title>
-        <Button onClick={handleSave}>Save & View Stats</Button>
+      <Group justify="space-between" wrap="nowrap">
+        <Title order={3} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {run.name}
+        </Title>
+        <Button onClick={handleSave} size="sm" style={{ flexShrink: 0 }}>Save & View Stats</Button>
       </Group>
 
       {!videoSrc && (
@@ -83,18 +124,24 @@ export function AnnotatePage() {
         </Alert>
       )}
 
-      <VideoPlayer
-        src={videoSrc}
-        onTimeChange={setCurrentTime}
-        onDurationChange={setDuration}
-        seekToTime={seekTarget}
-      />
+      <div style={{ position: 'relative' }}>
+        <VideoPlayer
+          src={videoSrc}
+          onTimeChange={setCurrentTime}
+          onDurationChange={setDuration}
+          seekToTime={seekTarget}
+          videoElRef={videoElRef}
+        />
+        {poseOpen && <PoseCanvas landmarks={landmarks} videoRef={videoElRef} />}
+      </div>
 
       <EventTimeline
         events={events}
         duration={duration}
         currentTime={currentTime}
         onSeek={setSeekTarget}
+        selectedEventIdx={selectedEventIdx}
+        onSelectEvent={handleSelectEvent}
       />
 
       <Divider />
@@ -105,7 +152,38 @@ export function AnnotatePage() {
         currentTime={currentTime}
         onMark={handleMark}
         onUndo={handleUndo}
+        selectedEventIdx={selectedEventIdx}
       />
+
+      <Divider />
+
+      <Group justify="space-between" align="center">
+        <Group gap="xs">
+          <IconRun size={18} />
+          <Text fw={500} size="sm">Pose Analysis</Text>
+          <Text size="xs" c="dimmed">(MediaPipe, runs in browser)</Text>
+        </Group>
+        <ActionIcon onClick={handleTogglePose} variant="subtle">
+          {poseOpen ? <IconChevronUp size={18} /> : <IconChevronDown size={18} />}
+        </ActionIcon>
+      </Group>
+
+      <Collapse in={poseOpen}>
+        <Stack gap="sm">
+          <Group gap="xs">
+            <Button
+              size="xs"
+              leftSection={poseLoading ? <Loader size="xs" /> : undefined}
+              onClick={handleAnalyzePose}
+              disabled={!videoSrc || poseLoading}
+            >
+              {poseLoading ? 'Loading model…' : 'Analyze Frame'}
+            </Button>
+            {poseError && <Text size="xs" c="red">{poseError}</Text>}
+          </Group>
+          <PoseAnglesTable angles={angles} />
+        </Stack>
+      </Collapse>
     </Stack>
   );
 }
