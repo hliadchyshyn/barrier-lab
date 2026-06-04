@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Stack, Button, Group, Title, Divider, Alert, Text,
   Collapse, ActionIcon, Loader, SegmentedControl,
@@ -16,6 +17,7 @@ import { usePose } from './usePose';
 import type { HurdleEvent } from '../../types';
 
 export function AnnotatePage() {
+  const { t } = useTranslation();
   const { runId } = useParams<{ runId: string }>();
   const location = useLocation();
   const navigate = useNavigate();
@@ -110,7 +112,7 @@ export function AnnotatePage() {
     }
   }, [poseOpen, clearPose]);
 
-  if (!run) return <div>Run not found</div>;
+  if (!run) return <div>{t('common.notFound')}</div>;
 
   return (
     <Stack>
@@ -118,12 +120,12 @@ export function AnnotatePage() {
         <Title order={3} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {run.name}
         </Title>
-        <Button onClick={handleSave} size="sm" style={{ flexShrink: 0 }}>Save & View Stats</Button>
+        <Button onClick={handleSave} size="sm" style={{ flexShrink: 0 }}>{t('annotate.saveStats')}</Button>
       </Group>
 
       {!videoSrc && (
         <Alert color="orange">
-          <Text size="sm">Video not available. Re-upload it using "+ New Run" or select it below.</Text>
+          <Text size="sm">{t('annotate.videoUnavailable')}</Text>
         </Alert>
       )}
 
@@ -165,15 +167,15 @@ export function AnnotatePage() {
       <Group justify="space-between" align="center">
         <Group gap="xs">
           <IconRun size={18} />
-          <Text fw={500} size="sm">Pose Analysis</Text>
-          <Text size="xs" c="dimmed">(MediaPipe, runs in browser)</Text>
+          <Text fw={500} size="sm">{t('annotate.poseAnalysis')}</Text>
+          <Text size="xs" c="dimmed">{t('annotate.poseHint')}</Text>
         </Group>
         <ActionIcon onClick={handleTogglePose} variant="subtle">
           {poseOpen ? <IconChevronUp size={18} /> : <IconChevronDown size={18} />}
         </ActionIcon>
       </Group>
 
-      <Collapse in={poseOpen}>
+      <Collapse expanded={poseOpen}>
         <Stack gap="sm">
           <Group gap="xs">
             <Button
@@ -182,13 +184,13 @@ export function AnnotatePage() {
               onClick={handleAnalyzePose}
               disabled={!videoSrc || poseLoading}
             >
-              {poseLoading ? 'Loading model…' : 'Analyze Frame'}
+              {poseLoading ? t('annotate.loadingModel') : t('annotate.analyzeFrame')}
             </Button>
             {poseError && <Text size="xs" c="red">{poseError}</Text>}
           </Group>
           {allLandmarks && allLandmarks.length > 1 && (
             <Group gap="xs" align="center">
-              <Text size="xs" c="dimmed">Athlete:</Text>
+              <Text size="xs" c="dimmed">{t('annotate.athlete')}</Text>
               <SegmentedControl
                 size="xs"
                 value={String(selectedPoseIdx)}
