@@ -10,12 +10,6 @@ export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL!,
   trustedOrigins: (process.env.CORS_ORIGIN ?? '').split(',').filter(Boolean),
   advanced: {
-    ...(isProd && {
-      crossSubdomainCookies: {
-        enabled: true,
-        domain: '.railway.app',
-      },
-    }),
     defaultCookieAttributes: {
       sameSite: isProd ? 'none' : 'lax',
       secure: isProd,
