@@ -30,7 +30,14 @@ export default defineConfig({
           { src: '/icons/512.png', sizes: '512x512', type: 'image/png' },
         ],
       },
-      workbox: { maximumFileSizeToCacheInBytes: 5 * 1024 * 1024 },
+      workbox: {
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        navigateFallbackDenylist: [/^\/api\//],
+        runtimeCaching: [{
+          urlPattern: /^\/api\//,
+          handler: 'NetworkOnly',
+        }],
+      },
     }),
   ],
 });
