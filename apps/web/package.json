@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "start": "node server.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
@@ -24,6 +25,8 @@
     "@tabler/icons-react": "^3.44.0",
     "better-auth": "^1.6.13",
     "dexie": "^4.4.3",
+    "express": "^5.2.1",
+    "http-proxy-middleware": "^4.0.0",
     "i18next": "^26.3.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
