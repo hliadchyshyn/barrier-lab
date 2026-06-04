@@ -5,10 +5,12 @@ import {
   Text, Divider, Alert, Center, Paper,
 } from '@mantine/core';
 import { IconBrandGoogle } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
 import { authClient } from '../../lib/authClient';
 import { useAuthStore } from '../../store/auth';
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const checkSession = useAuthStore(s => s.checkSession);
   const [email, setEmail]       = useState('');
@@ -36,8 +38,8 @@ export function LoginPage() {
   };
 
   return (
-    <Center h="100vh">
-      <Paper p="xl" w={360} withBorder>
+    <Center h="100vh" px="sm">
+      <Paper p={{ base: 'md', sm: 'xl' }} w={{ base: '100%', sm: 360 }} withBorder>
         <Stack>
           <Title order={2}>BarrierLab</Title>
 
@@ -46,14 +48,14 @@ export function LoginPage() {
           <form onSubmit={handleSubmit}>
             <Stack>
               <TextInput
-                label="Email" type="email" required
+                label={t('auth.email')} type="email" required
                 value={email} onChange={e => setEmail(e.target.value)}
               />
               <PasswordInput
-                label="Password" required
+                label={t('auth.password')} required
                 value={password} onChange={e => setPassword(e.target.value)}
               />
-              <Button type="submit" loading={loading}>Sign in</Button>
+              <Button type="submit" loading={loading}>{t('auth.signIn')}</Button>
             </Stack>
           </form>
 
@@ -64,11 +66,11 @@ export function LoginPage() {
             leftSection={<IconBrandGoogle size={16} />}
             onClick={handleGoogle}
           >
-            Continue with Google
+            {t('auth.continueGoogle')}
           </Button>
 
           <Text size="sm" ta="center">
-            No account? <Link to="/register">Register</Link>
+            {t('auth.noAccount')} <Link to="/register">{t('auth.toRegister')}</Link>
           </Text>
         </Stack>
       </Paper>

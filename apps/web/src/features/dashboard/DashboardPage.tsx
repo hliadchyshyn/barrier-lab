@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button, Stack, Title, Text, Modal, TextInput, Group, FileButton } from '@mantine/core';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useRunsStore } from '../../store/runs';
 import { RunCard } from './RunCard';
 import { DisciplineSelect } from '../../components/DisciplineSelect';
@@ -10,6 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { saveVideo, uploadVideoToR2 } from '../../lib/videoStorage';
 
 export function DashboardPage() {
+  const { t } = useTranslation();
   const { runs, loaded, loadAll, addRun, deleteRun } = useRunsStore();
   const navigate = useNavigate();
   const [modalOpen, setModalOpen] = useState(false);
@@ -30,7 +32,6 @@ export function DashboardPage() {
     };
     await addRun(run);
     await saveVideo(id, videoFile);
-    // Upload to R2 in background — don't block navigation
     uploadVideoToR2(id, videoFile).catch(err =>
       console.error('R2 upload failed:', err),
     );
@@ -42,24 +43,26 @@ export function DashboardPage() {
 
   return (
     <Stack>
-      <Group justify="space-between">
-        <Title order={2}>My Runs</Title>
-        <Button onClick={() => setModalOpen(true)}>+ New Run</Button>
+      <Group justify="space-between" wrap="nowrap">
+        <Title order={2}>{t('dashboard.title')}</Title>
+        <Button onClick={() => setModalOpen(true)} size="sm" style={{ flexShrink: 0 }}>
+          {t('dashboard.newRun')}
+        </Button>
       </Group>
 
       {runs.length === 0 && (
-        <Text c="dimmed">No runs yet. Upload a video to get started.</Text>
+        <Text c="dimmed">{t('dashboard.empty')}</Text>
       )}
 
       {runs.map(run => (
         <RunCard key={run.id} run={run} onDelete={() => deleteRun(run.id)} />
       ))}
 
-      <Modal opened={modalOpen} onClose={() => setModalOpen(false)} title="New Run">
+      <Modal opened={modalOpen} onClose={() => setModalOpen(false)} title={t('dashboard.modalTitle')}>
         <Stack>
           <TextInput
-            label="Run name"
-            placeholder="Morning session, Heat 1..."
+            label={t('dashboard.runName')}
+            placeholder={t('dashboard.runNamePlaceholder')}
             value={name}
             onChange={e => setName(e.target.value)}
           />
@@ -67,12 +70,12 @@ export function DashboardPage() {
           <FileButton onChange={setVideoFile} accept="video/*">
             {props => (
               <Button variant="outline" {...props}>
-                {videoFile ? videoFile.name : 'Select video file'}
+                {videoFile ? videoFile.name : t('dashboard.selectVideo')}
               </Button>
             )}
           </FileButton>
           <Button disabled={!videoFile || !name.trim()} onClick={handleCreate}>
-            Create
+            {t('dashboard.create')}
           </Button>
         </Stack>
       </Modal>

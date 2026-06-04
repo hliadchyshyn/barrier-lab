@@ -4,10 +4,12 @@ import {
   Stack, TextInput, PasswordInput, Button, Title,
   Text, Alert, Center, Paper,
 } from '@mantine/core';
+import { useTranslation } from 'react-i18next';
 import { authClient } from '../../lib/authClient';
 import { useAuthStore } from '../../store/auth';
 
 export function RegisterPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const checkSession = useAuthStore(s => s.checkSession);
   const [name, setName]         = useState('');
@@ -32,33 +34,33 @@ export function RegisterPage() {
   };
 
   return (
-    <Center h="100vh">
-      <Paper p="xl" w={360} withBorder>
+    <Center h="100vh" px="sm">
+      <Paper p={{ base: 'md', sm: 'xl' }} w={{ base: '100%', sm: 360 }} withBorder>
         <Stack>
-          <Title order={2}>Create account</Title>
+          <Title order={2}>{t('auth.createAccount')}</Title>
 
           {error && <Alert color="red">{error}</Alert>}
 
           <form onSubmit={handleSubmit}>
             <Stack>
               <TextInput
-                label="Name" required
+                label={t('auth.name')} required
                 value={name} onChange={e => setName(e.target.value)}
               />
               <TextInput
-                label="Email" type="email" required
+                label={t('auth.email')} type="email" required
                 value={email} onChange={e => setEmail(e.target.value)}
               />
               <PasswordInput
-                label="Password" required minLength={8}
+                label={t('auth.password')} required minLength={8}
                 value={password} onChange={e => setPassword(e.target.value)}
               />
-              <Button type="submit" loading={loading}>Create account</Button>
+              <Button type="submit" loading={loading}>{t('auth.createAccount')}</Button>
             </Stack>
           </form>
 
           <Text size="sm" ta="center">
-            Already have an account? <Link to="/login">Sign in</Link>
+            {t('auth.hasAccount')} <Link to="/login">{t('auth.toSignIn')}</Link>
           </Text>
         </Stack>
       </Paper>
