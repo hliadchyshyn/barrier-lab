@@ -34,7 +34,7 @@ export function LoginPage() {
   };
 
   const handleGoogle = () => {
-    authClient.signIn.social({ provider: 'google', callbackURL: '/' });
+    authClient.signIn.social({ provider: 'google', callbackURL: `${window.location.origin}/` });
   };
 
   return (
