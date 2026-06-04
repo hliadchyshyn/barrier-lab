@@ -3,7 +3,7 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { db } from '../db';
 import * as schema from '../db/schema';
 
-const isProd = process.env.NODE_ENV === 'production';
+const isProd = process.env.RAILWAY_ENVIRONMENT !== undefined || process.env.NODE_ENV === 'production';
 
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET!,
