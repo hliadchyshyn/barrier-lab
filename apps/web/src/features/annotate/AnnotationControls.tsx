@@ -1,4 +1,5 @@
-import { Button, Group, Stack, Badge } from '@mantine/core';
+import { Button, Group, Stack, Badge, ActionIcon, Tooltip } from '@mantine/core';
+import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import type { HurdleEvent, Run } from '../../types';
 
@@ -8,10 +9,14 @@ interface Props {
   currentTime: number;
   onMark: (event: HurdleEvent) => void;
   onUndo: () => void;
+  onStepBack: () => void;
+  onStepForward: () => void;
   selectedEventIdx: number | null;
 }
 
-export function AnnotationControls({ run, events, currentTime, onMark, onUndo, selectedEventIdx }: Props) {
+export function AnnotationControls({
+  run, events, currentTime, onMark, onUndo, onStepBack, onStepForward, selectedEventIdx,
+}: Props) {
   const { t } = useTranslation();
   const hasStart  = events.some(e => e.type === 'start');
   const hasFinish = events.some(e => e.type === 'finish');
@@ -28,7 +33,8 @@ export function AnnotationControls({ run, events, currentTime, onMark, onUndo, s
   }
 
   return (
-    <Stack>
+    <Stack gap="sm">
+      {/* Marking buttons */}
       <Group>
         <Button color="green" disabled={hasStart}
           onClick={() => onMark({ type: 'start', videoTime: currentTime })}>
@@ -59,14 +65,26 @@ export function AnnotationControls({ run, events, currentTime, onMark, onUndo, s
         </Button>
       </Group>
 
-      <Group gap="xs">
+      {/* Frame step + progress badges */}
+      <Group gap="xs" align="center">
+        <Tooltip label={t('annotate.stepBack')} withArrow>
+          <ActionIcon variant="default" size="sm" onClick={onStepBack}>
+            <IconChevronLeft size={14} />
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label={t('annotate.stepForward')} withArrow>
+          <ActionIcon variant="default" size="sm" onClick={onStepForward}>
+            <IconChevronRight size={14} />
+          </ActionIcon>
+        </Tooltip>
+
         {['start', ...Array.from({ length: run.hurdleCount }, (_, i) => `h${i + 1}`), 'finish']
           .map(key => {
             const done = key === 'start' ? hasStart
               : key === 'finish' ? hasFinish
               : markedHurdles.includes(Number(key.slice(1)));
             return (
-              <Badge key={key} color={done ? 'green' : 'gray'} variant="dot">
+              <Badge key={key} color={done ? 'green' : 'gray'} variant="dot" size="sm">
                 {key === 'start' ? 'S' : key === 'finish' ? 'F' : key.toUpperCase()}
               </Badge>
             );

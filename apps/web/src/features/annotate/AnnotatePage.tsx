@@ -5,7 +5,7 @@ import {
   Stack, Button, Group, Title, Divider, Alert, Text,
   Collapse, ActionIcon, Loader, SegmentedControl, Progress, Center,
 } from '@mantine/core';
-import { IconChevronDown, IconChevronUp, IconRun, IconX } from '@tabler/icons-react';
+import { IconChevronDown, IconChevronUp, IconRun, IconX, IconSearch } from '@tabler/icons-react';
 import { useRunsStore } from '../../store/runs';
 import { loadVideoUrl } from '../../lib/videoStorage';
 import { api } from '../../lib/apiClient';
@@ -14,8 +14,12 @@ import { AnnotationControls } from './AnnotationControls';
 import { EventTimeline } from './EventTimeline';
 import { PoseCanvas, PoseAnglesTable } from './PoseOverlay';
 import { PhaseTimeline } from './PhaseTimeline';
+import { HurdleSuggestions } from './HurdleSuggestions';
 import { usePose, frameAtTime } from './usePose';
+import { detectHurdlesFromFrames } from './hurdleDetection';
 import type { HurdleEvent } from '../../types';
+
+const FRAME_STEP = 1 / 30;
 
 export function AnnotatePage() {
   const { t } = useTranslation();
@@ -34,17 +38,17 @@ export function AnnotatePage() {
   const [seekTarget, setSeekTarget]       = useState<number | null>(null);
   const [selectedEventIdx, setSelectedEventIdx] = useState<number | null>(null);
   const [poseOpen, setPoseOpen]           = useState(false);
+  const [suggestions, setSuggestions]     = useState<number[] | null>(null);
 
   const videoElRef = useRef<HTMLVideoElement>(null);
   const {
-    detectOnFrame, analyzeVideo, cancelAnalysis, clearPose, selectPose,
+    detectOnFrame, analyzeVideo, cancelAnalysis, clearPose, selectPose, selectVideoAthlete,
     loading: poseLoading,
     allLandmarks, selectedPoseIdx, angles, phase,
-    videoFrames, isAnalyzingVideo, analysisProgress,
+    videoFrames, isAnalyzingVideo, analysisProgress, videoAthletesCount,
     error: poseError,
   } = usePose();
 
-  // Derive displayed phase+angles: prefer video analysis data when available
   const frameData = videoFrames.length > 0 ? frameAtTime(videoFrames, currentTime) : null;
   const displayedAngles = frameData?.angles ?? angles;
   const displayedPhase  = frameData?.phase  ?? phase;
@@ -108,6 +112,19 @@ export function AnnotatePage() {
     navigate(`/stats/${run.id}`);
   };
 
+  // Frame stepping — manipulate video element directly for responsiveness
+  const handleStepBack = useCallback(() => {
+    const v = videoElRef.current;
+    if (!v) return;
+    v.currentTime = Math.max(0, v.currentTime - FRAME_STEP);
+  }, []);
+
+  const handleStepForward = useCallback(() => {
+    const v = videoElRef.current;
+    if (!v) return;
+    v.currentTime = Math.min(v.duration || 0, v.currentTime + FRAME_STEP);
+  }, []);
+
   const handleAnalyzePose = useCallback(() => {
     const video = videoElRef.current;
     if (!video) return;
@@ -117,6 +134,7 @@ export function AnnotatePage() {
   const handleAnalyzeVideo = useCallback(() => {
     const video = videoElRef.current;
     if (!video) return;
+    setSuggestions(null);
     analyzeVideo(video);
   }, [analyzeVideo]);
 
@@ -128,6 +146,38 @@ export function AnnotatePage() {
       setPoseOpen(true);
     }
   }, [poseOpen, clearPose]);
+
+  const handleDetectHurdles = useCallback(() => {
+    if (!run || videoFrames.length === 0) return;
+    const detected = detectHurdlesFromFrames(videoFrames, run.hurdleCount);
+
+    // Debug: log phase breakdown and timestamps
+    const phaseCounts = videoFrames.reduce<Record<string, number>>((acc, f) => {
+      acc[f.rawPhase] = (acc[f.rawPhase] ?? 0) + 1;
+      return acc;
+    }, {});
+    const nonRunningTimes = videoFrames
+      .filter(f => f.rawPhase !== 'running')
+      .map(f => `${f.rawPhase[0].toUpperCase()}@${f.time.toFixed(2)}`);
+    console.debug(
+      '[HurdleDetect] raw phase counts:', phaseCounts,
+      '\nnon-running frames:', nonRunningTimes.join(', '),
+      '\n→ detected:', detected.length, 'hurdles at', detected.map(t => t.toFixed(2) + 's').join(', '),
+    );
+
+    setSuggestions(detected);
+  }, [run, videoFrames]);
+
+  // Accept suggestions → add to events, deduplicating by hurdleIndex
+  const handleAcceptSuggestions = useCallback((newEvents: HurdleEvent[]) => {
+    setEvents(prev => {
+      const existingHurdles = new Set(
+        prev.filter(e => e.type === 'hurdle').map(e => e.hurdleIndex),
+      );
+      const toAdd = newEvents.filter(e => !existingHurdles.has(e.hurdleIndex));
+      return [...prev, ...toAdd];
+    });
+  }, []);
 
   if (!loaded) return <Center p="xl"><Loader /></Center>;
   if (!run) return <div>{t('common.notFound')}</div>;
@@ -160,7 +210,6 @@ export function AnnotatePage() {
         )}
       </div>
 
-      {/* Phase timeline — visible after video analysis */}
       {videoFrames.length > 0 && (
         <PhaseTimeline
           frames={videoFrames}
@@ -187,11 +236,26 @@ export function AnnotatePage() {
         currentTime={currentTime}
         onMark={handleMark}
         onUndo={handleUndo}
+        onStepBack={handleStepBack}
+        onStepForward={handleStepForward}
         selectedEventIdx={selectedEventIdx}
       />
 
+      {/* Hurdle suggestions panel */}
+      {suggestions !== null && (
+        <HurdleSuggestions
+          suggestedTimes={suggestions}
+          hurdleCount={run.hurdleCount}
+          currentTime={currentTime}
+          onAccept={handleAcceptSuggestions}
+          onSeek={setSeekTarget}
+          onDismiss={() => setSuggestions(null)}
+        />
+      )}
+
       <Divider />
 
+      {/* Pose analysis section */}
       <Group justify="space-between" align="center">
         <Group gap="xs">
           <IconRun size={18} />
@@ -205,7 +269,6 @@ export function AnnotatePage() {
 
       <Collapse expanded={poseOpen}>
         <Stack gap="sm">
-          {/* Analysis progress bar */}
           {isAnalyzingVideo && (
             <Stack gap={4}>
               <Group justify="space-between">
@@ -240,6 +303,19 @@ export function AnnotatePage() {
               {t('annotate.analyzeVideo')}
             </Button>
 
+            {/* Detect hurdles from analysis */}
+            {videoFrames.length > 0 && !isAnalyzingVideo && (
+              <Button
+                size="xs"
+                color="orange"
+                variant="light"
+                leftSection={<IconSearch size={12} />}
+                onClick={handleDetectHurdles}
+              >
+                {t('annotate.detectHurdles')}
+              </Button>
+            )}
+
             {videoFrames.length > 0 && !isAnalyzingVideo && (
               <Text size="xs" c="green">
                 {t('annotate.analysisReady', { count: videoFrames.length })}
@@ -247,8 +323,23 @@ export function AnnotatePage() {
             )}
           </Group>
 
-          {poseError && <Text size="xs" c="red">{poseError}</Text>}
+          {/* Athlete lane selector — shown after video analysis */}
+          {videoAthletesCount > 1 && (
+            <Group gap="xs" align="center">
+              <Text size="xs" c="dimmed">{t('annotate.selectAthlete')}</Text>
+              <SegmentedControl
+                size="xs"
+                defaultValue="0"
+                onChange={v => selectVideoAthlete(Number(v))}
+                data={Array.from({ length: videoAthletesCount }, (_, i) => ({
+                  label: `${t('annotate.lane')} ${i + 1}`,
+                  value: String(i),
+                }))}
+              />
+            </Group>
+          )}
 
+          {/* Per-frame athlete selector (single-frame analysis) */}
           {allLandmarks && allLandmarks.length > 1 && (
             <Group gap="xs" align="center">
               <Text size="xs" c="dimmed">{t('annotate.athlete')}</Text>
@@ -260,6 +351,8 @@ export function AnnotatePage() {
               />
             </Group>
           )}
+
+          {poseError && <Text size="xs" c="red">{poseError}</Text>}
 
           <PoseAnglesTable angles={displayedAngles} phase={displayedPhase} />
         </Stack>

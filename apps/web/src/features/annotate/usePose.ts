@@ -26,6 +26,11 @@ export interface FrameAnalysis {
   landmarks: NormalizedLandmark[];
 }
 
+interface RawVideoFrame {
+  time: number;
+  athletes: NormalizedLandmark[][];
+}
+
 function angle3(a: NormalizedLandmark, b: NormalizedLandmark, c: NormalizedLandmark): number {
   const v1 = { x: a.x - b.x, y: a.y - b.y };
   const v2 = { x: c.x - b.x, y: c.y - b.y };
@@ -68,7 +73,7 @@ function seekTo(video: HTMLVideoElement, time: number): Promise<void> {
 
 // Smooth detected phases using a sliding window majority vote
 function applyTemporalSmoothing(frames: FrameAnalysis[]): FrameAnalysis[] {
-  const HALF_WINDOW = 2; // ±2 frames = 5-frame window at 0.12s/frame ≈ 0.6s
+  const HALF_WINDOW = 2;
   return frames.map((frame, i) => {
     const start = Math.max(0, i - HALF_WINDOW);
     const end = Math.min(frames.length, i + HALF_WINDOW + 1);
@@ -91,17 +96,60 @@ export function frameAtTime(frames: FrameAnalysis[], time: number): FrameAnalysi
     const diff = Math.abs(f.time - time);
     if (diff < minDiff) { minDiff = diff; closest = f; }
   }
-  // Only return if within 0.3s of a known frame
   return minDiff < 0.3 ? closest : null;
 }
 
-const ANALYSIS_INTERVAL = 0.12; // analyze a frame every 120ms
+function computeCentroid(pts: NormalizedLandmark[]): { x: number; y: number } {
+  if (pts.length === 0) return { x: 0.5, y: 0.5 };
+  const x = pts.reduce((s, p) => s + p.x, 0) / pts.length;
+  const y = pts.reduce((s, p) => s + p.y, 0) / pts.length;
+  return { x, y };
+}
+
+function findClosestAthlete(
+  athletes: NormalizedLandmark[][],
+  target: { x: number; y: number },
+): number {
+  let best = 0;
+  let bestDist = Infinity;
+  for (let i = 0; i < athletes.length; i++) {
+    const c = computeCentroid(athletes[i]);
+    const d = Math.hypot(c.x - target.x, c.y - target.y);
+    if (d < bestDist) { best = i; bestDist = d; }
+  }
+  return best;
+}
+
+function deriveFramesForAthlete(
+  rawData: RawVideoFrame[],
+  startAthleteIdx: number,
+): FrameAnalysis[] {
+  let lastCentroid: { x: number; y: number } | null = null;
+  const rawFrames: FrameAnalysis[] = [];
+
+  for (const { time, athletes } of rawData) {
+    if (athletes.length === 0) continue;
+    const idx = lastCentroid === null
+      ? Math.min(startAthleteIdx, athletes.length - 1)
+      : findClosestAthlete(athletes, lastCentroid);
+    const pts = athletes[idx];
+    lastCentroid = computeCentroid(pts);
+    const computed = computeAngles(pts);
+    const rawPhase = detectHurdlePhase(pts, computed);
+    rawFrames.push({ time, angles: computed, phase: rawPhase, rawPhase, landmarks: pts });
+  }
+
+  return applyTemporalSmoothing(rawFrames);
+}
+
+const ANALYSIS_INTERVAL = 0.12;
 
 export function usePose() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const landmarkerRef = useRef<any>(null);
   const allLandmarksRef = useRef<NormalizedLandmark[][] | null>(null);
   const cancelAnalysisRef = useRef(false);
+  const rawVideoDataRef = useRef<RawVideoFrame[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [allLandmarks, setAllLandmarks] = useState<NormalizedLandmark[][] | null>(null);
@@ -113,6 +161,7 @@ export function usePose() {
   const [videoFrames, setVideoFrames] = useState<FrameAnalysis[]>([]);
   const [isAnalyzingVideo, setIsAnalyzingVideo] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [videoAthletesCount, setVideoAthletesCount] = useState(0);
 
   const landmarks = allLandmarks?.[selectedPoseIdx] ?? null;
 
@@ -183,15 +232,15 @@ export function usePose() {
     setIsAnalyzingVideo(true);
     setAnalysisProgress(0);
     setVideoFrames([]);
+    rawVideoDataRef.current = [];
 
     const times: number[] = [];
     for (let t = 0; t < duration; t += ANALYSIS_INTERVAL) {
       times.push(parseFloat(t.toFixed(3)));
     }
 
-    const rawFrames: FrameAnalysis[] = [];
+    const rawData: RawVideoFrame[] = [];
 
-    // Save playback state
     const wasPlaying = !video.paused;
     if (wasPlaying) video.pause();
     const savedTime = video.currentTime;
@@ -209,36 +258,38 @@ export function usePose() {
             (pts: NormalizedLandmark[]) => pts && pts.length >= 29,
           );
           if (allPts.length > 0) {
-            const pts = allPts[0];
-            const computed = computeAngles(pts);
-            const rawPhase = detectHurdlePhase(pts, computed);
-            rawFrames.push({
-              time: times[i],
-              angles: computed,
-              phase: rawPhase,
-              rawPhase,
-              landmarks: pts,
-            });
+            rawData.push({ time: times[i], athletes: allPts });
           }
         } catch { /* skip undetectable frame */ }
 
         setAnalysisProgress((i + 1) / times.length);
       }
     } finally {
-      // Restore video state
       await seekTo(video, savedTime);
       if (wasPlaying) video.play().catch(() => undefined);
       setIsAnalyzingVideo(false);
     }
 
-    if (rawFrames.length === 0) {
+    if (rawData.length === 0) {
       setError('No poses detected in video');
       return;
     }
 
-    const smoothed = applyTemporalSmoothing(rawFrames);
+    rawVideoDataRef.current = rawData;
+    const maxAthletes = rawData.reduce((max, f) => Math.max(max, f.athletes.length), 0);
+    setVideoAthletesCount(maxAthletes);
+
+    const smoothed = deriveFramesForAthlete(rawData, 0);
     setVideoFrames(smoothed);
   }, [ensureLoaded]);
+
+  // Re-derive the video phase timeline for a different athlete lane
+  const selectVideoAthlete = useCallback((athleteIdx: number) => {
+    const rawData = rawVideoDataRef.current;
+    if (rawData.length === 0) return;
+    const smoothed = deriveFramesForAthlete(rawData, athleteIdx);
+    setVideoFrames(smoothed);
+  }, []);
 
   const cancelAnalysis = useCallback(() => {
     cancelAnalysisRef.current = true;
@@ -272,6 +323,7 @@ export function usePose() {
     cancelAnalysis,
     clearPose,
     selectPose,
+    selectVideoAthlete,
     loading,
     allLandmarks,
     landmarks,
@@ -281,6 +333,7 @@ export function usePose() {
     videoFrames,
     isAnalyzingVideo,
     analysisProgress,
+    videoAthletesCount,
     error,
   };
 }
