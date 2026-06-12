@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Stack, Group, Text, Button, Badge, ActionIcon,
@@ -29,17 +29,13 @@ export function HurdleSuggestions({
 
   const hasMissing = suggestedTimes.length < hurdleCount;
 
-  function setTime(i: number, time: number) {
-    setTimes(prev => prev.map((v, j) => (j === i ? time : v)));
+  function replaceAt<T>(arr: T[], i: number, val: T): T[] {
+    return arr.map((v, j) => (j === i ? val : v));
   }
 
-  function setNum(i: number, n: number) {
-    setNums(prev => prev.map((v, j) => (j === i ? n : v)));
-  }
-
-  function setStatus(i: number, status: Status) {
-    setStatuses(prev => prev.map((v, j) => (j === i ? status : v)));
-  }
+  function setTime(i: number, time: number) { setTimes(prev => replaceAt(prev, i, time)); }
+  function setNum(i: number, n: number) { setNums(prev => replaceAt(prev, i, n)); }
+  function setStatus(i: number, status: Status) { setStatuses(prev => replaceAt(prev, i, status)); }
 
   function acceptSingle(i: number) {
     setStatus(i, 'accepted');
@@ -56,11 +52,12 @@ export function HurdleSuggestions({
 
   const pendingCount = statuses.filter(s => s === 'pending').length;
 
-  // Detect duplicate hurdle numbers among non-skipped rows
-  const numCounts = hurdleNums.reduce<Record<number, number>>((acc, n, i) => {
-    if (statuses[i] !== 'skipped') acc[n] = (acc[n] ?? 0) + 1;
-    return acc;
-  }, {});
+  const numCounts = useMemo(() =>
+    hurdleNums.reduce<Record<number, number>>((acc, n, i) => {
+      if (statuses[i] !== 'skipped') acc[n] = (acc[n] ?? 0) + 1;
+      return acc;
+    }, {}),
+  [hurdleNums, statuses]);
   const hasDuplicates = Object.values(numCounts).some(c => c > 1);
 
   return (
@@ -161,37 +158,30 @@ export function HurdleSuggestions({
                   <IconTarget size={12} />
                 </ActionIcon>
 
-                {/* Snap to current video time */}
                 {statuses[i] === 'pending' && (
-                  <Button
-                    size="xs"
-                    variant="subtle"
-                    px={6}
-                    onClick={() => setTime(i, parseFloat(currentTime.toFixed(3)))}
-                    title={t('annotate.suggest.useCurrent')}
-                  >
-                    ← {currentTime.toFixed(2)}s
-                  </Button>
-                )}
-
-                {/* Accept */}
-                {statuses[i] === 'pending' && (
-                  <ActionIcon
-                    size="xs"
-                    color="green"
-                    variant="light"
-                    disabled={isDuplicate}
-                    onClick={() => acceptSingle(i)}
-                  >
-                    <IconCheck size={12} />
-                  </ActionIcon>
-                )}
-
-                {/* Skip */}
-                {statuses[i] === 'pending' && (
-                  <ActionIcon size="xs" color="gray" variant="subtle" onClick={() => setStatus(i, 'skipped')}>
-                    <IconX size={12} />
-                  </ActionIcon>
+                  <>
+                    <Button
+                      size="xs"
+                      variant="subtle"
+                      px={6}
+                      onClick={() => setTime(i, Math.round(currentTime * 1000) / 1000)}
+                      title={t('annotate.suggest.useCurrent')}
+                    >
+                      ← {currentTime.toFixed(2)}s
+                    </Button>
+                    <ActionIcon
+                      size="xs"
+                      color="green"
+                      variant="light"
+                      disabled={isDuplicate}
+                      onClick={() => acceptSingle(i)}
+                    >
+                      <IconCheck size={12} />
+                    </ActionIcon>
+                    <ActionIcon size="xs" color="gray" variant="subtle" onClick={() => setStatus(i, 'skipped')}>
+                      <IconX size={12} />
+                    </ActionIcon>
+                  </>
                 )}
 
                 {/* Undo skip */}

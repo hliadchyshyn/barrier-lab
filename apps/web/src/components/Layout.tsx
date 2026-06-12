@@ -5,8 +5,18 @@ import { IconHome, IconArrowsLeftRight, IconTrendingUp, IconLogout, IconShield, 
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/auth';
 import i18n from '../i18n';
+import type { ReactElement } from 'react';
 
 const LANG_KEY = 'barrier-lab-lang';
+
+type NavItem =
+  | { label: string; path: string; href?: never; icon: ReactElement; color?: string }
+  | { label: string; path?: never; href: string; icon: ReactElement; color: string };
+
+function externalLinkProps(item: NavItem) {
+  if (!item.href) return {};
+  return { component: 'a' as const, href: item.href, target: '_blank', rel: 'noopener noreferrer' };
+}
 
 function LangSwitch() {
   const { i18n: i18nHook } = useTranslation();
@@ -59,11 +69,12 @@ export function Layout() {
   const user = useAuthStore(s => s.user);
   const isAdmin = user?.role === 'admin';
 
-  const navLinks = [
+  const navItems: NavItem[] = [
     { label: t('nav.runs'),    path: '/',        icon: <IconHome size={18} /> },
     { label: t('nav.trends'),  path: '/trends',  icon: <IconTrendingUp size={18} /> },
     { label: t('nav.compare'), path: '/compare', icon: <IconArrowsLeftRight size={18} /> },
-    ...(isAdmin ? [{ label: t('nav.admin'), path: '/admin', icon: <IconShield size={18} /> }] : []),
+    ...(isAdmin ? [{ label: t('nav.admin'), path: '/admin', icon: <IconShield size={18} /> } as NavItem] : []),
+    { label: t('nav.donate'), href: 'https://send.monobank.ua/chaZmHXiy', icon: <IconHeart size={18} />, color: 'pink' },
   ];
 
   const handleNav = (path: string) => {
@@ -91,32 +102,22 @@ export function Layout() {
 
                   {/* Desktop nav */}
                   <Group gap='xs' visibleFrom='sm'>
-                      {navLinks.map(({ label, path, icon }) => (
+                      {navItems.map((item) => (
                           <Button
-                              key={path}
-                              variant={pathname === path ? 'light' : 'subtle'}
+                              key={item.path ?? item.href}
+                              {...externalLinkProps(item)}
+                              variant={item.href ? 'light' : pathname === item.path ? 'light' : 'subtle'}
+                              color={item.color}
                               size='sm'
-                              leftSection={icon}
-                              onClick={() => navigate(path)}
+                              leftSection={item.icon}
+                              onClick={item.path ? () => navigate(item.path!) : undefined}
                           >
-                              {label}
+                              {item.label}
                           </Button>
                       ))}
                       <Divider orientation='vertical' />
                       <LangSwitch />
                       <UserMenu />
-                      <Button
-                          component='a'
-                          href='https://send.monobank.ua/chaZmHXiy'
-                          target='_blank'
-                          rel='noopener noreferrer'
-                          variant='light'
-                          color='pink'
-                          size='sm'
-                          leftSection={<IconHeart size={16} />}
-                      >
-                          {t('nav.donate')}
-                      </Button>
                   </Group>
 
                   {/* Mobile: lang + avatar + burger */}
@@ -142,46 +143,34 @@ export function Layout() {
               hiddenFrom='sm'
           >
               <Stack gap='xs'>
-                  {navLinks.map(({ label, path, icon }) => (
+                  {navItems.map((item) => (
                       <UnstyledButton
-                          key={path}
-                          onClick={() => handleNav(path)}
+                          key={item.path ?? item.href}
+                          {...externalLinkProps(item)}
+                          onClick={item.path ? () => handleNav(item.path!) : undefined}
                           p='sm'
                           style={(theme) => ({
                               borderRadius: theme.radius.sm,
                               backgroundColor:
-                                  pathname === path
+                                  item.path && pathname === item.path
                                       ? theme.colors.blue[0]
                                       : 'transparent',
                               color:
-                                  pathname === path
-                                      ? theme.colors.blue[7]
-                                      : 'inherit',
+                                  item.href
+                                      ? theme.colors[item.color ?? 'pink'][6]
+                                      : item.path && pathname === item.path
+                                          ? theme.colors.blue[7]
+                                          : 'inherit',
                               display: 'flex',
                               alignItems: 'center',
                               gap: 10,
-                              fontWeight: pathname === path ? 600 : 400,
+                              fontWeight: item.path && pathname === item.path ? 600 : 400,
                           })}
                       >
-                          {icon}
-                          {label}
+                          {item.icon}
+                          {item.label}
                       </UnstyledButton>
                   ))}
-                  <UnstyledButton
-                      component='a'
-                      href='https://send.monobank.ua/chaZmHXiy'
-                      p='sm'
-                      style={(theme) => ({
-                          borderRadius: theme.radius.sm,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 10,
-                          color: theme.colors.pink[6],
-                      })}
-                  >
-                      <IconHeart size={18} />
-                      {t('nav.donate')}
-                  </UnstyledButton>
               </Stack>
           </Drawer>
 

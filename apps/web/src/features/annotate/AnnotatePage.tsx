@@ -150,21 +150,6 @@ export function AnnotatePage() {
   const handleDetectHurdles = useCallback(() => {
     if (!run || videoFrames.length === 0) return;
     const detected = detectHurdlesFromFrames(videoFrames, run.hurdleCount);
-
-    // Debug: log phase breakdown and timestamps
-    const phaseCounts = videoFrames.reduce<Record<string, number>>((acc, f) => {
-      acc[f.rawPhase] = (acc[f.rawPhase] ?? 0) + 1;
-      return acc;
-    }, {});
-    const nonRunningTimes = videoFrames
-      .filter(f => f.rawPhase !== 'running')
-      .map(f => `${f.rawPhase[0].toUpperCase()}@${f.time.toFixed(2)}`);
-    console.debug(
-      '[HurdleDetect] raw phase counts:', phaseCounts,
-      '\nnon-running frames:', nonRunningTimes.join(', '),
-      '\n→ detected:', detected.length, 'hurdles at', detected.map(t => t.toFixed(2) + 's').join(', '),
-    );
-
     setSuggestions(detected);
   }, [run, videoFrames]);
 
